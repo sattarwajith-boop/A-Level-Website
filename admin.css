@@ -6,22 +6,22 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --admin-bg:      #050b18;
-  --admin-surface: #0b1528;
-  --admin-card:    #101f38;
-  --admin-card2:   #0e1a30;
+  --admin-bg:      #eef5ff;
+  --admin-surface: #ffffff;
+  --admin-card:    #f8fbff;
+  --admin-card2:   #edf5ff;
   --admin-blue:    #2563eb;
   --admin-blue-dk: #1d4ed8;
-  --admin-cyan:    #38bdf8;
-  --admin-gold:    #f4c35a;
-  --admin-text:    #e5edf7;
-  --admin-muted:   #94a3b8;
+  --admin-cyan:    #0284c7;
+  --admin-gold:    #b7791f;
+  --admin-text:    #172033;
+  --admin-muted:   #64748b;
   --admin-danger:  #ef4444;
   --admin-danger-dk: #dc2626;
   --admin-success: #22c55e;
   --admin-warning: #f59e0b;
-  --admin-border:  rgba(148,163,184,0.15);
-  --admin-hover:   rgba(148,163,184,0.06);
+  --admin-border:  rgba(37,99,235,0.14);
+  --admin-hover:   rgba(37,99,235,0.07);
   --ff: 'Plus Jakarta Sans', system-ui, sans-serif;
   --sidebar-w: 240px;
   --topbar-h: 56px;

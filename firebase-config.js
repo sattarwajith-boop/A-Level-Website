@@ -10,24 +10,25 @@
  *  6. Enable Firebase Storage
  *  7. Go to Project Settings → Your Apps → Add Web App
  *  8. Copy the firebaseConfig object below and replace
- *  9. Add your admin email to ADMIN_EMAILS array
+ *  9. Create your admin user in Firebase Authentication
  *  10. Deploy Firestore + Storage security rules (see admin panel)
  * ═══════════════════════════════════════════════════════
  */
 
 export const firebaseConfig = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+  apiKey:            "AIzaSyDBsZdp9ZMbuFgttRX4udrVFmIV0VVnbiM",
+  authDomain:        "alevel-21d9c.firebaseapp.com",
+  projectId:         "alevel-21d9c",
+  storageBucket:     "alevel-21d9c.firebasestorage.app",
+  messagingSenderId: "835479382760",
+  appId:             "1:835479382760:web:c21519dd59565c23b3b75d",
+  measurementId:     "G-H8M49FTXKD"
 };
 
 /**
- * Only emails listed here can access the admin panel.
- * Add your email below. Multiple emails allowed.
+ * Admin access is controlled by Firebase Authentication.
+ * Keep public sign-up disabled and create admin users manually in Firebase.
  */
-export const ADMIN_EMAILS = [
-  "admin@yourdomain.com"
-];
+export const ADMIN_EMAILS = {
+  includes: () => true
+};

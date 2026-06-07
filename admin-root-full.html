@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -579,7 +579,7 @@
           <h1>Firebase Security Rules</h1>
         </div>
         <div class="card">
-          <p style="color:var(--admin-muted);margin-bottom:20px;line-height:1.7">Copy and paste these rules into your Firebase console. Replace <code style="background:var(--admin-card);padding:2px 6px;border-radius:4px">your-email@example.com</code> with your actual admin email.</p>
+          <p style="color:var(--admin-muted);margin-bottom:20px;line-height:1.7">Copy and paste these rules into your Firebase console. Admin writes are allowed only after Firebase Authentication login.</p>
 
           <h3 style="margin-bottom:10px">Firestore Rules</h3>
           <pre class="code-block">rules_version = '2';
@@ -591,10 +591,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn()
-        && request.auth.token.email in [
-          "your-email@example.com"
-        ];
+      return isSignedIn();
     }
 
     match /resources/{resourceId} {
@@ -634,10 +631,7 @@ service firebase.storage {
     }
 
     function isAdmin() {
-      return isSignedIn()
-        && request.auth.token.email in [
-          "your-email@example.com"
-        ];
+      return isSignedIn();
     }
 
     match /resources/{allPaths=**} {
@@ -654,9 +648,9 @@ service firebase.storage {
               <li>Open <a href="https://console.firebase.google.com" target="_blank" style="color:var(--admin-cyan)">Firebase Console</a></li>
               <li>Go to Firestore → Rules → paste Firestore rules above</li>
               <li>Go to Storage → Rules → paste Storage rules above</li>
-              <li>Replace <code style="background:var(--admin-card);padding:2px 6px;border-radius:4px">your-email@example.com</code> in both rule sets</li>
               <li>Publish both rule sets</li>
-              <li>Open <code style="background:var(--admin-card);padding:2px 6px;border-radius:4px">firebase-config.js</code> and fill in your Firebase config</li>
+              <li>Create your admin user in Firebase Authentication</li>
+              <li>Keep public sign-up pages disabled so only manually created Firebase users can enter admin</li>
             </ol>
           </div>
         </div>

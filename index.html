@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -544,7 +544,9 @@ document.body.innerHTML =
   renderPage3();
 </script>
 
-<!-- theme.js runs AFTER the body is rendered -->
+<!-- Working app layer: local admin-managed data with real search, filters, downloads and reports -->
+<script src="tdr-store.js"></script>
 <script src="theme.js"></script>
+<script src="public-app.js"></script>
 </body>
 </html>

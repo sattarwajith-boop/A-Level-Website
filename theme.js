@@ -2,7 +2,7 @@
  * ═══════════════════════════════════════════════════════
  *  THE DARK ROOM — theme.js
  *  Handles light / dark mode toggle.
- *  Default theme: DARK
+ *  Default theme: LIGHT
  *  Persists choice to localStorage so it survives refreshes.
  * ═══════════════════════════════════════════════════════
  */
@@ -56,16 +56,20 @@
   /* ── Attach click handler to all toggle buttons ─── */
   function attachListeners() {
     document.querySelectorAll(".theme-toggle").forEach(function (btn) {
+      if (btn.dataset.themeBound === "true") return;
+      btn.dataset.themeBound = "true";
       btn.addEventListener("click", toggleTheme);
     });
   }
 
   /* ── Boot: load saved preference (default = dark) ─ */
   function init() {
-    var saved = localStorage.getItem(STORAGE_KEY) || "dark";
+    var saved = localStorage.getItem(STORAGE_KEY) || "light";
     applyTheme(saved);
     attachListeners();
   }
+
+  window.TDRTheme = { init: init, apply: applyTheme };
 
   /* Run after DOM is ready */
   if (document.readyState === "loading") {
