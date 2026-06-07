@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Dark Room — Sri Lankan A/L Papers & Resources</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=Noto+Sans+Tamil:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+<link rel="apple-touch-icon" href="assets/favicon.svg" />
+<link rel="stylesheet" href="styles.css" />
+
+<!--
+  ═══════════════════════════════════════════════════════
+  THEME NOTE
+  Default theme = dark.  Set by: <html data-theme="dark">
+  theme.js reads localStorage ("tdr-theme") on load and
+  switches the attribute automatically.  Students can
+  click any .theme-toggle button to switch.
+  ═══════════════════════════════════════════════════════
+
+  FILE STRUCTURE
+  ├── index.html  — structure & layout (this file)
+  ├── styles.css  — all CSS, light + dark tokens
+  ├── theme.js    — toggle logic, localStorage persistence
+  └── config.js   — all text, data, links — edit here!
+-->
+
+<!-- Load config FIRST so SITE object is available when render() runs -->
+<script src="config.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+  All HTML is rendered by JavaScript from config.js data.
+  To change any text, links or content → edit config.js.
+  To change colours or layout    → edit styles.css.
+  To change the toggle behaviour → edit theme.js.
+═══════════════════════════════════════════════════════ -->
+
+<script>
+/* ────────────────────────────────────────────────────────
+   HELPER FUNCTIONS
+──────────────────────────────────────────────────────── */
+
+/** TDR book + moon SVG shared across navs */
+const LOGO_SVG = `<svg viewBox="0 0 64 64" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect x="6" y="8" width="52" height="48" rx="15" fill="#07111f"/>
+  <circle cx="46" cy="18" r="7" fill="#f4c35a"/>
+  <path d="M18 39h28" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M20 24h24v24H20z" stroke="#2563eb" stroke-width="4" stroke-linejoin="round"/>
+  <text x="32" y="37" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="800" fill="#f8fafc">TDR</text>
+</svg>`;
+
+/** Render badge HTML from [type, label] pair */
+function badge([type, label]) {
+  return `<span class="badge badge-${type}">${label}</span>`;
+}
+
+/** Build a standard nav bar.
+ *  @param {string[]} activeLabels — which nav link labels are active
+ *  @param {boolean}  showLang     — show Language button
+ */
+function renderNav(activeLabels = [], showLang = false) {
+  const links = SITE.navLinks.map(l => {
+    const active = activeLabels.includes(l.label) || l.active ? " active" : "";
+    return `<a class="nav-link${active}" href="${l.href}">${l.label}</a>`;
+  }).join("");
+
+  const lang  = showLang ? `<button class="nav-btn">English ▾</button>` : "";
+
+  return `<nav>
+  <a class="nav-logo" href="#">
+    <div class="nav-logo-icon">${LOGO_SVG}</div>
+    <span class="nav-logo-text">${SITE.name}</span>
+  </a>
+  <div class="nav-links">${links}</div>
+  <div class="nav-right">
+    <div class="nav-search-box">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input placeholder="Search papers, subjects…" type="text" />
+    </div>
+    ${lang}
+    <!-- ★ THEME TOGGLE — appears in every nav -->
+    <button class="theme-toggle" aria-label="Toggle theme">
+      <!-- Filled in by theme.js on load -->
+    </button>
+  </div>
+</nav>`;
+}
+
+/** Build a standard footer */
+function renderFooter() {
+  const cols = SITE.footerCols.map(col => `
+    <div class="footer-col">
+      <h4>${col.heading}</h4>
+      ${col.links.map(l => `<a href="${l.href}">${l.label}</a>`).join("")}
+    </div>`).join("");
+
+  return `<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-logo">
+        <div class="footer-logo-icon">${LOGO_SVG}</div>
+        <span class="footer-logo-name">${SITE.name}</span>
+      </div>
+      <p>${SITE.footerTagline}</p>
+    </div>
+    ${cols}
+  </div>
+  <div class="footer-bottom">
+    <span>${SITE.copyright}</span>
+    <span>${SITE.footerSources}</span>
+  </div>
+</footer>`;
+}
+
+/* ────────────────────────────────────────────────────────
+   PAGE 1 — HOMEPAGE
+──────────────────────────────────────────────────────── */
+function renderPage1() {
+  const h = SITE.hero;
+
+  /* Hero tag links */
+  const tags = h.tags.map(t => `<a href="${t.href}">${t.label}</a>`).join("");
+
+  /* Hero stats */
+  const stats = h.stats.map(s => `
+    <div class="hero-stat">
+      <div class="hero-stat-num">${s.num}</div>
+      <div class="hero-stat-lbl">${s.lbl}</div>
+    </div>`).join("");
+
+  /* Homepage resource filters */
+  const filterSelects = SITE.homeFilters.map(f => `
+    <label class="home-filter-field">
+      <span>${f.label}</span>
+      <select>${f.options.map(o => `<option>${o}</option>`).join("")}</select>
+    </label>`).join("");
+
+  /* Quick cards */
+  const qCards = SITE.quickCards.map(c => `
+    <a class="quick-card" href="${c.href}">
+      <div class="quick-card-icon" style="background:${c.iconBg}">${c.icon}</div>
+      <div class="quick-card-title">${c.title}</div>
+      <div class="quick-card-count">${c.count}</div>
+    </a>`).join("");
+
+  /* Stream tabs */
+  const tabs = SITE.streamTabs.map((t, i) =>
+    `<div class="stream-tab${i === 0 ? " active" : ""}">${t}</div>`).join("");
+
+  /* Subject cards */
+  const subjects = SITE.subjects.map(s => `
+    <a class="subject-card" href="${s.href}">
+      <div class="subject-icon" style="background:${s.color}">${s.icon}</div>
+      <div>
+        <div class="subject-name">${s.name}</div>
+        <div class="subject-meta">${s.meta}</div>
+      </div>
+    </a>`).join("");
+
+  /* Resource cards */
+  const rCards = SITE.recentResources.map(r => `
+    <div class="resource-card">
+      <div class="resource-card-top">
+        <div class="resource-card-subject">
+          <div class="resource-subject-dot" style="background:${r.dotColor}"></div>
+          <div class="resource-subject-name">${r.subject}</div>
+        </div>
+        <div class="resource-card-title">${r.title}</div>
+        <div class="resource-card-badges">${r.badges.map(badge).join("")}</div>
+        <div class="resource-detail-grid">
+          <span><strong>Year</strong>${r.year}</span>
+          <span><strong>Medium</strong>${r.medium}</span>
+          <span><strong>Type</strong>${r.type}</span>
+          <span><strong>File</strong>${r.size}</span>
+        </div>
+      </div>
+      <div class="resource-card-bottom resource-card-actions">
+        <button class="resource-view-btn">View Online</button>
+        <button class="resource-dl-btn">↓ Download PDF</button>
+      </div>
+    </div>`).join("");
+
+  /* Countdown */
+  const cd = SITE.countdown;
+
+  /* Tools */
+  const tools = SITE.tools.map(t => `
+    <div class="tool-card">
+      <div class="tool-icon">${t.icon}</div>
+      <div class="tool-title">${t.title}</div>
+      <div class="tool-desc">${t.desc}</div>
+    </div>`).join("");
+
+  /* Blog cards */
+  const blogs = SITE.blogs.map(b => `
+    <div class="blog-card">
+      <div class="blog-tag">${b.tag}</div>
+      <div class="blog-title">${b.title}</div>
+      <div class="blog-date">${b.date}</div>
+    </div>`).join("");
+
+  return `
+    ${renderNav(["Past Papers"], true)}
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-grid-bg"></div>
+      <div class="hero-glow"></div>
+      <div class="hero-content">
+        <div class="hero-pretag">
+          <span></span>${h.pretag}
+        </div>
+        <h1>${h.headline}</h1>
+        <p>${h.sub}</p>
+        <div class="hero-search">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input placeholder="${h.searchPlaceholder}" type="text" />
+          <button class="hero-search-btn">Search</button>
+        </div>
+        <div class="hero-tags">
+          <span>Popular:</span>${tags}
+        </div>
+        <div class="home-filter-panel">
+          <div class="home-filter-title">Find the exact file fast</div>
+          <div class="home-filter-grid">${filterSelects}</div>
+        </div>
+        <div class="hero-stats">${stats}</div>
+      </div>
+    </section>
+
+    <!-- QUICK CARDS -->
+    <div style="background:var(--bg1);border-bottom:1px solid var(--border);padding:24px 32px;">
+      <div style="max-width:1180px;margin:0 auto;">
+        <div class="quick-grid">${qCards}</div>
+      </div>
+    </div>
+
+    <!-- SUBJECTS -->
+    <div class="section">
+      <div class="section-hdr">
+        <div>
+          <div class="section-label">Browse by subject</div>
+          <h2>All streams &amp; subjects</h2>
+        </div>
+        <a href="#">View all 38 subjects →</a>
+      </div>
+      <div class="stream-tabs" style="margin-bottom:16px">${tabs}</div>
+      <div class="subjects-grid">${subjects}</div>
+    </div>
+
+    <!-- LATEST RESOURCES -->
+    <div class="section" style="padding-top:0">
+      <div class="section-hdr">
+        <div>
+          <div class="section-label">Latest additions</div>
+          <h2>Recent past papers</h2>
+        </div>
+        <a href="#">See all past papers →</a>
+      </div>
+      <div class="resources-grid">${rCards}</div>
+    </div>
+
+    <!-- COUNTDOWN -->
+    <div style="padding:0 32px 40px;max-width:1180px;margin:0 auto;">
+      <div class="countdown-card">
+        <div>
+          <div class="section-label" style="margin-bottom:8px">Exam countdown</div>
+          <div class="countdown-title">${cd.title}</div>
+          <div class="countdown-sub" style="margin-top:6px">${cd.subtitle}</div>
+          <button style="margin-top:16px;background:var(--amber);border:none;color:var(--dl-btn-text);font-family:var(--ff-body);font-size:13px;font-weight:700;padding:9px 20px;border-radius:8px;cursor:pointer;">${cd.btnLabel}</button>
+        </div>
+        <div class="countdown-nums">
+          <div class="countdown-unit"><div class="countdown-num">${cd.days}</div><div class="countdown-lbl">Days</div></div>
+          <div class="countdown-sep">:</div>
+          <div class="countdown-unit"><div class="countdown-num">${cd.hours}</div><div class="countdown-lbl">Hours</div></div>
+          <div class="countdown-sep">:</div>
+          <div class="countdown-unit"><div class="countdown-num">${cd.minutes}</div><div class="countdown-lbl">Minutes</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STUDY TOOLS -->
+    <div class="section" style="padding-top:0">
+      <div class="section-hdr">
+        <div>
+          <div class="section-label">Free tools</div>
+          <h2>Study tools for A/L students</h2>
+        </div>
+        <a href="#">View all tools →</a>
+      </div>
+      <div class="tools-grid">${tools}</div>
+    </div>
+
+    <!-- BLOG -->
+    <div class="section" style="padding-top:0">
+      <div class="section-hdr">
+        <div>
+          <div class="section-label">Tips &amp; guides</div>
+          <h2>Exam study resources</h2>
+        </div>
+        <a href="#">Read all articles →</a>
+      </div>
+      <div class="blog-grid">${blogs}</div>
+    </div>
+
+    ${renderFooter()}
+  `;
+}
+
+/* ────────────────────────────────────────────────────────
+   PAGE 2 — SUBJECT PAGE (Chemistry example)
+──────────────────────────────────────────────────────── */
+function renderPage2() {
+  const sp = SITE.subjectPage;
+
+  /* Breadcrumb */
+  const crumbs = sp.breadcrumb.map((c, i) =>
+    i < sp.breadcrumb.length - 1
+      ? `<a href="#">${c}</a><span class="breadcrumb-sep">›</span>`
+      : `<span style="color:var(--text1)">${c}</span>`
+  ).join("");
+
+  /* Stats */
+  const stats = sp.stats.map(s =>
+    `<div><div class="spstat-num">${s.num}</div><div class="spstat-lbl">${s.lbl}</div></div>`
+  ).join("");
+
+  /* Filter chips */
+  const chips = sp.filterTypes.map((f, i) =>
+    `<button class="filter-chip${i === 0 ? " active" : ""}">${f}</button>`
+  ).join("");
+
+  const mkSelect = (opts) =>
+    `<select class="filter-select">${opts.map(o => `<option>${o}</option>`).join("")}</select>`;
+
+  /* Resource list */
+  const items = sp.resources.map(r => `
+    <div class="rlist-item">
+      <div class="rlist-icon">${r.icon}</div>
+      <div class="rlist-main">
+        <div class="rlist-title">${r.title}</div>
+        <div class="rlist-badges" style="margin:5px 0">${r.badges.map(badge).join("")}</div>
+        <div class="rlist-meta">
+          <div class="rlist-meta-item">📄 ${r.pages} pages</div>
+          <div class="rlist-meta-item">${r.size}</div>
+          <div class="rlist-meta-item">↓ ${r.downloads}</div>
+          <div class="rlist-meta-item">Source: ${r.source}</div>
+        </div>
+      </div>
+      <div class="rlist-action">
+        <button class="rlist-view-btn">View Details</button>
+        <button class="rlist-dl-btn">↓ Download PDF</button>
+      </div>
+    </div>`).join("");
+
+  return `
+    ${renderNav(["Past Papers"])}
+
+    <!-- SUBJECT HERO -->
+    <div class="subject-page-hero">
+      <div class="breadcrumb" style="position:absolute;top:16px;left:32px;font-size:12px">${crumbs}</div>
+      <div style="margin-top:20px;display:flex;align-items:center;gap:24px;width:100%">
+        <div class="subject-page-icon">${sp.icon}</div>
+        <div>
+          <div class="section-label" style="margin-bottom:4px">${sp.stream}</div>
+          <div class="subject-page-title">${sp.name}</div>
+          <div class="subject-page-desc">${sp.desc}</div>
+        </div>
+        <div class="subject-page-stats">${stats}</div>
+      </div>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+      <span class="filter-label">Filter:</span>
+      ${chips}
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        ${mkSelect(sp.filterStreams)}
+        ${mkSelect(sp.filterYears)}
+        ${mkSelect(sp.filterMediums)}
+        ${mkSelect(sp.filterSort)}
+      </div>
+    </div>
+
+    <!-- RESOURCE LIST -->
+    <div style="padding:28px 32px;max-width:1180px;margin:0 auto;">
+      <div class="resource-list">${items}</div>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <button class="pg-active">1</button>
+        <button class="pg-normal">2</button>
+        <button class="pg-normal">3</button>
+        <span class="pg-dots">…</span>
+        <button class="pg-normal">18</button>
+        <button class="pg-normal" style="padding:7px 14px">Next →</button>
+      </div>
+    </div>
+  `;
+}
+
+/* ────────────────────────────────────────────────────────
+   PAGE 3 — RESOURCE DOWNLOAD PAGE
+──────────────────────────────────────────────────────── */
+function renderPage3() {
+  const dp = SITE.downloadPage;
+
+  /* Breadcrumb */
+  const crumbs = dp.breadcrumb.map((c, i) =>
+    i < dp.breadcrumb.length - 1
+      ? `<a href="#">${c}</a><span class="breadcrumb-sep">›</span>`
+      : `<span style="color:var(--text1)">${c}</span>`
+  ).join("");
+
+  /* PDF previews */
+  const pdfs = dp.papers.map(p => `
+    <div class="dl-preview-pdf">
+      <div class="dl-preview-pdf-icon">📄</div>
+      <div class="dl-preview-pdf-name">${p.name}</div>
+    </div>`).join("");
+
+  /* Meta grid */
+  const metaRows = dp.meta.map(m => `
+    <div class="dl-meta-cell">
+      <div class="dl-meta-key">${m.key}</div>
+      <div class="dl-meta-val">${m.val}</div>
+    </div>`).join("");
+
+  /* Sidebar — related papers */
+  const related = dp.sidebar.related.map(r => `
+    <div class="related-item">
+      <div class="related-icon">${r.icon}</div>
+      <div>
+        <div class="related-item-title">${r.title}</div>
+        <div class="related-item-meta">${r.meta}</div>
+      </div>
+    </div>`).join("");
+
+  /* Sidebar — all chemistry links */
+  const allLinks = dp.sidebar.allChemistry.map((l, i) => `
+    <a href="#" style="display:flex;justify-content:space-between;font-size:13px;color:var(--text1);text-decoration:none;padding:8px 0;border-bottom:1px solid var(--border)">
+      ${l.label} <span style="color:var(--text2)">${l.count}</span>
+    </a>`).join("") +
+    `<a href="#" style="display:flex;justify-content:space-between;font-size:13px;color:var(--amber);text-decoration:none;padding:8px 0">View all Chemistry resources →</a>`;
+
+  return `
+    ${renderNav([])}
+
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <div class="breadcrumb">${crumbs}</div>
+      <h1>${dp.title}</h1>
+      <div class="page-header-sub">${dp.subtitle}</div>
+    </div>
+
+    <!-- DOWNLOAD LAYOUT -->
+    <div class="download-layout">
+      <!-- MAIN COLUMN -->
+      <div>
+        <div class="dl-main-card">
+          <!-- PDF PREVIEW -->
+          <div class="dl-preview">
+            <div class="dl-badge-official">${dp.officialBadge}</div>
+            <div style="display:flex;gap:16px">${pdfs}</div>
+          </div>
+          <!-- INFO -->
+          <div class="dl-info">
+            <div class="dl-meta-grid">${metaRows}</div>
+            <div class="dl-actions">
+              <button class="dl-btn-primary">${dp.downloadBtn}</button>
+              <button class="dl-btn-secondary">${dp.viewBtn}</button>
+              <button class="dl-btn-secondary" style="font-size:13px;padding:10px 20px">${dp.schemeBtn}</button>
+            </div>
+            <div class="report-link">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              ${dp.reportText}
+            </div>
+            <div class="source-credit">${dp.sourceCredit}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIDEBAR -->
+      <div class="dl-sidebar">
+        <!-- MARKING SCHEME CARD -->
+        <div class="dl-sidebar-card" style="border-color:rgba(196,125,14,0.25);background:var(--amber-dim)">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--amber);margin-bottom:10px">
+            Marking Scheme Available
+          </div>
+          <div style="font-size:14px;color:var(--text0);margin-bottom:12px;line-height:1.4">
+            ${dp.sidebar.markingScheme.title}
+          </div>
+          <button style="width:100%;padding:10px;background:var(--amber);border:none;border-radius:8px;color:var(--dl-btn-text);font-family:var(--ff-body);font-size:13px;font-weight:700;cursor:pointer;">
+            ${dp.sidebar.markingScheme.btnLabel}
+          </button>
+        </div>
+        <!-- RELATED PAPERS -->
+        <div class="dl-sidebar-card">
+          <div class="dl-sidebar-title">Related papers</div>
+          ${related}
+        </div>
+        <!-- ALL CHEMISTRY -->
+        <div class="dl-sidebar-card">
+          <div class="dl-sidebar-title">All Chemistry resources</div>
+          <div style="display:flex;flex-direction:column;gap:8px">${allLinks}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DISCLAIMER -->
+    <div style="max-width:1100px;margin:0 auto 40px;padding:0 32px">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 22px;font-size:12px;color:var(--text2);line-height:1.8">
+        <strong style="color:var(--text1)">Disclaimer:</strong> ${dp.disclaimer}
+      </div>
+    </div>
+
+    ${renderFooter()}
+  `;
+}
+
+/* ────────────────────────────────────────────────────────
+   MOUNT ALL PAGES
+──────────────────────────────────────────────────────── */
+const PAGE_BREAK = (a, b) => `
+  <div class="page-break">▲ ${a} &nbsp;|&nbsp; ▼ ${b}</div>`;
+
+document.body.innerHTML =
+  renderPage1() +
+  PAGE_BREAK("Page 1: Homepage", "Page 2: Subject Page (Chemistry)") +
+  renderPage2() +
+  PAGE_BREAK("Page 2: Subject Page", "Page 3: Resource Download Page") +
+  renderPage3();
+</script>
+
+<!-- theme.js runs AFTER the body is rendered -->
+<script src="theme.js"></script>
+</body>
+</html>

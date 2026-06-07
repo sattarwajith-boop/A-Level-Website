@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin — The Dark Room</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+<link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+  AUTH LOADING SCREEN
+═══════════════════════════════════════════════════ -->
+<div id="auth-loading">
+  <div class="loading-logo">
+    <svg viewBox="0 0 64 64" width="48" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="6" y="8" width="52" height="48" rx="15" fill="#07111f"/>
+      <circle cx="46" cy="18" r="7" fill="#f4c35a"/>
+      <path d="M18 39h28" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+      <path d="M20 24h24v24H20z" stroke="#2563eb" stroke-width="4" stroke-linejoin="round"/>
+      <text x="32" y="37" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="800" fill="#f8fafc">TDR</text>
+    </svg>
+  </div>
+  <div class="loading-spinner"></div>
+  <p>Checking authentication…</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+  LOGIN PAGE
+═══════════════════════════════════════════════════ -->
+<div id="login-page" class="hidden">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 64 64" width="44" height="44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="8" width="52" height="48" rx="15" fill="#07111f"/>
+        <circle cx="46" cy="18" r="7" fill="#f4c35a"/>
+        <path d="M18 39h28" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+        <path d="M20 24h24v24H20z" stroke="#2563eb" stroke-width="4" stroke-linejoin="round"/>
+        <text x="32" y="37" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="800" fill="#f8fafc">TDR</text>
+      </svg>
+      <div>
+        <div class="login-title">The Dark Room</div>
+        <div class="login-subtitle">Admin Panel</div>
+      </div>
+    </div>
+    <div class="login-form">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="admin@yourdomain.com" autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••••" autocomplete="current-password" />
+      </div>
+      <div id="login-error" class="error-msg hidden"></div>
+      <button id="login-btn" class="btn-primary btn-full" onclick="loginAdmin()">
+        <span id="login-btn-text">Sign In</span>
+        <span id="login-btn-loader" class="btn-loader hidden"></span>
+      </button>
+    </div>
+    <p class="login-note">Access restricted to authorised administrators only.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+  MAIN ADMIN PANEL
+═══════════════════════════════════════════════════ -->
+<div id="admin-panel" class="hidden">
+
+  <!-- TOP BAR -->
+  <header class="admin-topbar">
+    <div class="topbar-left">
+      <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <div class="topbar-logo">
+        <svg viewBox="0 0 64 64" width="28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="8" width="52" height="48" rx="15" fill="#07111f"/>
+          <circle cx="46" cy="18" r="7" fill="#f4c35a"/>
+          <path d="M18 39h28" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+          <path d="M20 24h24v24H20z" stroke="#2563eb" stroke-width="4" stroke-linejoin="round"/>
+          <text x="32" y="37" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="800" fill="#f8fafc">TDR</text>
+        </svg>
+        <span>Admin Panel</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span id="topbar-email" class="topbar-email"></span>
+      <button class="btn-danger-sm" onclick="logoutAdmin()">Logout</button>
+    </div>
+  </header>
+
+  <div class="admin-body">
+
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar" id="admin-sidebar">
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-section="dashboard" onclick="showSection('dashboard')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" data-section="upload" onclick="showSection('upload')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload Resource
+        </button>
+        <button class="nav-item" data-section="resources" onclick="showSection('resources')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Manage Resources
+          <span class="nav-badge" id="nav-badge-resources">0</span>
+        </button>
+        <button class="nav-item" data-section="reports" onclick="showSection('reports')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Broken Reports
+          <span class="nav-badge nav-badge-danger" id="nav-badge-reports">0</span>
+        </button>
+        <button class="nav-item" data-section="announcements" onclick="showSection('announcements')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg>
+          Announcements
+        </button>
+        <button class="nav-item" data-section="subjects" onclick="showSection('subjects')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Subjects
+        </button>
+        <button class="nav-item" data-section="settings" onclick="showSection('settings')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Site Settings
+        </button>
+        <div class="sidebar-divider"></div>
+        <a class="nav-item nav-item-link" href="index.html" target="_blank">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          View Public Site
+        </a>
+        <div class="sidebar-rules-section">
+          <button class="nav-item" data-section="security-rules" onclick="showSection('security-rules')">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Security Rules
+          </button>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="admin-main" id="admin-main">
+
+      <!-- ── DASHBOARD ── -->
+      <section id="section-dashboard" class="section-content">
+        <div class="section-header">
+          <h1>Dashboard</h1>
+          <div class="section-header-actions">
+            <button class="btn-primary" onclick="showSection('upload')">+ Upload Resource</button>
+          </div>
+        </div>
+
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card"><div class="stat-num" id="stat-total">—</div><div class="stat-lbl">Total Resources</div></div>
+          <div class="stat-card"><div class="stat-num stat-blue" id="stat-published">—</div><div class="stat-lbl">Published</div></div>
+          <div class="stat-card"><div class="stat-num stat-amber" id="stat-drafts">—</div><div class="stat-lbl">Drafts</div></div>
+          <div class="stat-card"><div class="stat-num stat-cyan" id="stat-papers">—</div><div class="stat-lbl">Past Papers</div></div>
+          <div class="stat-card"><div class="stat-num stat-green" id="stat-books">—</div><div class="stat-lbl">Books</div></div>
+          <div class="stat-card"><div class="stat-num stat-danger" id="stat-reports">—</div><div class="stat-lbl">Open Reports</div></div>
+        </div>
+
+        <div class="dashboard-quick-actions">
+          <button class="qa-btn" onclick="showSection('upload')">
+            <span>📤</span> Upload Resource
+          </button>
+          <button class="qa-btn" onclick="showSection('announcements')">
+            <span>📢</span> Add Announcement
+          </button>
+          <button class="qa-btn" onclick="showSection('reports')">
+            <span>🔗</span> View Reports
+          </button>
+          <button class="qa-btn" onclick="showSection('subjects')">
+            <span>📚</span> Manage Subjects
+          </button>
+        </div>
+
+        <div class="card" style="margin-top:28px">
+          <div class="card-header">
+            <h3>Recently Uploaded</h3>
+          </div>
+          <div id="dashboard-recent-list">
+            <div class="empty-state">Loading…</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── UPLOAD RESOURCE ── -->
+      <section id="section-upload" class="section-content hidden">
+        <div class="section-header">
+          <h1 id="upload-section-title">Upload Resource</h1>
+          <button class="btn-ghost" onclick="cancelEdit()">← Back to Resources</button>
+        </div>
+
+        <div class="card">
+          <form id="upload-form" onsubmit="return false;">
+
+            <div class="form-grid-2">
+              <div class="form-group form-col-2">
+                <label>Title <span class="req">*</span></label>
+                <input type="text" id="f-title" placeholder="e.g. 2023 A/L Chemistry Past Paper Tamil Medium" />
+              </div>
+
+              <div class="form-group">
+                <label>Subject <span class="req">*</span></label>
+                <select id="f-subject">
+                  <option value="">— Select Subject —</option>
+                  <option>Combined Maths</option><option>Physics</option><option>Chemistry</option>
+                  <option>Biology</option><option>ICT</option><option>General English</option>
+                  <option>General Knowledge</option><option>Accounting</option><option>Business Studies</option>
+                  <option>Economics</option><option>Engineering Technology</option>
+                  <option>Science for Technology</option><option>Bio Systems Technology</option>
+                  <option>Sinhala</option><option>Tamil</option><option>Political Science</option>
+                  <option>Geography</option><option>History</option><option>Logic</option>
+                  <option>Islam</option><option>Buddhism</option><option>Christianity</option><option>Other</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Stream <span class="req">*</span></label>
+                <select id="f-stream">
+                  <option value="">— Select Stream —</option>
+                  <option>Physical Science</option><option>Bio Science</option><option>Commerce</option>
+                  <option>Arts</option><option>Technology</option><option>Common Resources</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Resource Type <span class="req">*</span></label>
+                <select id="f-type">
+                  <option value="">— Select Type —</option>
+                  <option>Past Paper</option><option>Marking Scheme</option><option>Model Paper</option>
+                  <option>Term Test Paper</option><option>School Paper</option><option>Province Paper</option>
+                  <option>Book</option><option>Short Note</option><option>Syllabus</option>
+                  <option>Practical Guide</option><option>Revision Paper</option><option>Question Bank</option>
+                  <option>Answer Sheet</option><option>Announcement</option><option>Other</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Medium <span class="req">*</span></label>
+                <select id="f-medium">
+                  <option value="">— Select Medium —</option>
+                  <option>Tamil</option><option>Sinhala</option><option>English</option><option>Bilingual</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Year</label>
+                <select id="f-year">
+                  <option value="">— Select Year —</option>
+                  <option>2024</option><option>2023</option><option>2022</option><option>2021</option>
+                  <option>2020</option><option>2019</option><option>2018</option><option>2017</option>
+                  <option>2016</option><option>2015</option><option>2014</option><option>2013</option>
+                  <option>2012</option><option>2011</option><option>2010</option><option>Other</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Exam Type</label>
+                <select id="f-examtype">
+                  <option value="">— Select Exam Type —</option>
+                  <option>GCE A/L</option><option>School Term Test</option><option>Province Test</option>
+                  <option>Zonal Test</option><option>Private Institute Paper</option>
+                  <option>Teacher Model Paper</option><option>Other</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Paper Part</label>
+                <select id="f-paperpart">
+                  <option value="">— Select Part —</option>
+                  <option>Full Paper</option><option>Part I</option><option>Part II</option>
+                  <option>Essay</option><option>MCQ</option><option>Structured Essay</option>
+                  <option>Marking Scheme</option><option>Practical</option><option>Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top:8px">
+              <label>Description</label>
+              <textarea id="f-description" rows="3" placeholder="Short description about this resource…"></textarea>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>Source / Credit</label>
+                <input type="text" id="f-source" placeholder="e.g. Department of Examinations" />
+              </div>
+              <div class="form-group">
+                <label>Tags <span class="hint">(comma separated)</span></label>
+                <input type="text" id="f-tags" placeholder="chemistry, 2023, tamil, past paper" />
+              </div>
+            </div>
+
+            <!-- FILE UPLOAD -->
+            <div class="form-group" style="margin-top:8px">
+              <label>Upload File <span class="hint">(PDF, DOCX, Image, ZIP — max 100MB)</span></label>
+              <div class="file-drop-zone" id="file-drop-zone">
+                <input type="file" id="f-file" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.webp,.zip" onchange="handleFileSelect(this)" />
+                <div class="file-drop-inner">
+                  <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <p id="file-drop-label">Drag & drop or <strong>click to browse</strong></p>
+                  <p class="file-drop-hint" id="file-drop-hint">No file selected</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>External Download URL <span class="hint">(optional — use instead of or alongside file)</span></label>
+              <input type="url" id="f-externalurl" placeholder="https://drive.google.com/…" />
+            </div>
+
+            <!-- UPLOAD PROGRESS -->
+            <div id="upload-progress-wrap" class="hidden">
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="upload-progress-bar"></div>
+              </div>
+              <div class="progress-label" id="upload-progress-label">Uploading… 0%</div>
+            </div>
+
+            <div class="form-grid-2" style="margin-top:8px">
+              <div class="form-group">
+                <label>Visibility</label>
+                <select id="f-status">
+                  <option value="published">Published — visible to students</option>
+                  <option value="draft">Draft — hidden from public</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Featured</label>
+                <select id="f-featured">
+                  <option value="false">No</option>
+                  <option value="true">Yes — show in featured section</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="upload-error" class="error-msg hidden" style="margin-top:12px"></div>
+            <div id="upload-success" class="success-msg hidden" style="margin-top:12px"></div>
+
+            <input type="hidden" id="f-edit-id" value="" />
+            <input type="hidden" id="f-edit-storagepath" value="" />
+            <input type="hidden" id="f-edit-fileurl" value="" />
+
+            <div class="form-actions" style="margin-top:20px">
+              <button type="button" class="btn-primary" id="upload-submit-btn" onclick="handleSubmitResource()">
+                <span id="upload-btn-text">Upload & Save Resource</span>
+                <span id="upload-btn-loader" class="btn-loader hidden"></span>
+              </button>
+              <button type="button" class="btn-ghost" onclick="cancelEdit()">Cancel</button>
+            </div>
+
+          </form>
+        </div>
+      </section>
+
+      <!-- ── MANAGE RESOURCES ── -->
+      <section id="section-resources" class="section-content hidden">
+        <div class="section-header">
+          <h1>Manage Resources</h1>
+          <button class="btn-primary" onclick="showSection('upload')">+ Upload New</button>
+        </div>
+
+        <div class="card">
+          <div class="filter-row">
+            <input type="text" id="res-search" placeholder="Search by title…" oninput="filterResources()" />
+            <select id="res-filter-subject" onchange="filterResources()">
+              <option value="">All Subjects</option>
+              <option>Combined Maths</option><option>Physics</option><option>Chemistry</option>
+              <option>Biology</option><option>ICT</option><option>Accounting</option>
+              <option>Business Studies</option><option>Economics</option><option>Other</option>
+            </select>
+            <select id="res-filter-type" onchange="filterResources()">
+              <option value="">All Types</option>
+              <option>Past Paper</option><option>Marking Scheme</option><option>Model Paper</option>
+              <option>Book</option><option>Short Note</option><option>Syllabus</option>
+            </select>
+            <select id="res-filter-status" onchange="filterResources()">
+              <option value="">All Status</option>
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+            </select>
+            <select id="res-filter-sort" onchange="filterResources()">
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="title">A–Z Title</option>
+            </select>
+          </div>
+
+          <div id="resources-table-wrap">
+            <div class="empty-state">Loading resources…</div>
+          </div>
+
+          <div class="pagination-wrap" id="res-pagination"></div>
+        </div>
+      </section>
+
+      <!-- ── BROKEN REPORTS ── -->
+      <section id="section-reports" class="section-content hidden">
+        <div class="section-header">
+          <h1>Broken Link Reports</h1>
+        </div>
+        <div class="card">
+          <div id="reports-list">
+            <div class="empty-state">Loading reports…</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── ANNOUNCEMENTS ── -->
+      <section id="section-announcements" class="section-content hidden">
+        <div class="section-header">
+          <h1>Announcements</h1>
+          <button class="btn-primary" onclick="openAnnouncementForm()">+ Add Announcement</button>
+        </div>
+
+        <div id="announcement-form-wrap" class="card hidden" style="margin-bottom:20px">
+          <h3 id="ann-form-title" style="margin-bottom:16px">New Announcement</h3>
+          <div class="form-group">
+            <label>Title <span class="req">*</span></label>
+            <input type="text" id="ann-title" placeholder="e.g. 2024 A/L Past Papers Added" />
+          </div>
+          <div class="form-group">
+            <label>Message</label>
+            <textarea id="ann-message" rows="3" placeholder="Additional details…"></textarea>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Type</label>
+              <select id="ann-type">
+                <option value="info">Info</option>
+                <option value="update">Update</option>
+                <option value="warning">Warning</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select id="ann-status">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+          <input type="hidden" id="ann-edit-id" value="" />
+          <div class="form-actions">
+            <button class="btn-primary" onclick="saveAnnouncement()">Save Announcement</button>
+            <button class="btn-ghost" onclick="closeAnnouncementForm()">Cancel</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div id="announcements-list">
+            <div class="empty-state">Loading…</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── SUBJECTS ── -->
+      <section id="section-subjects" class="section-content hidden">
+        <div class="section-header">
+          <h1>Manage Subjects</h1>
+          <button class="btn-primary" onclick="openSubjectForm()">+ Add Subject</button>
+        </div>
+
+        <div id="subject-form-wrap" class="card hidden" style="margin-bottom:20px">
+          <h3 id="subj-form-title" style="margin-bottom:16px">New Subject</h3>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Subject Name <span class="req">*</span></label>
+              <input type="text" id="subj-name" placeholder="e.g. Chemistry" />
+            </div>
+            <div class="form-group">
+              <label>Stream</label>
+              <select id="subj-stream">
+                <option value="">— Select Stream —</option>
+                <option>Physical Science</option><option>Bio Science</option><option>Commerce</option>
+                <option>Arts</option><option>Technology</option><option>Common Resources</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Display Order</label>
+              <input type="number" id="subj-order" value="0" min="0" />
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select id="subj-status">
+                <option value="active">Active</option>
+                <option value="hidden">Hidden</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <input type="text" id="subj-desc" placeholder="Short subject description…" />
+          </div>
+          <input type="hidden" id="subj-edit-id" value="" />
+          <div class="form-actions">
+            <button class="btn-primary" onclick="saveSubject()">Save Subject</button>
+            <button class="btn-ghost" onclick="closeSubjectForm()">Cancel</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div id="subjects-list">
+            <div class="empty-state">Loading…</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── SITE SETTINGS ── -->
+      <section id="section-settings" class="section-content hidden">
+        <div class="section-header">
+          <h1>Site Settings</h1>
+        </div>
+        <div class="card">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Website Name</label>
+              <input type="text" id="set-name" placeholder="The Dark Room" />
+            </div>
+            <div class="form-group">
+              <label>Tagline</label>
+              <input type="text" id="set-tagline" placeholder="Sri Lankan A/L Resources" />
+            </div>
+            <div class="form-group">
+              <label>Contact Email</label>
+              <input type="email" id="set-email" placeholder="contact@yourdomain.com" />
+            </div>
+            <div class="form-group">
+              <label>Telegram Channel Link</label>
+              <input type="url" id="set-telegram" placeholder="https://t.me/…" />
+            </div>
+            <div class="form-group">
+              <label>Facebook Page Link</label>
+              <input type="url" id="set-facebook" placeholder="https://facebook.com/…" />
+            </div>
+            <div class="form-group">
+              <label>WhatsApp Group Link</label>
+              <input type="url" id="set-whatsapp" placeholder="https://chat.whatsapp.com/…" />
+            </div>
+            <div class="form-group">
+              <label>SEO Title</label>
+              <input type="text" id="set-seo-title" placeholder="The Dark Room — Sri Lankan A/L Resources" />
+            </div>
+            <div class="form-group">
+              <label>SEO Description</label>
+              <input type="text" id="set-seo-desc" placeholder="Free A/L past papers, marking schemes…" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Homepage Notice <span class="hint">(shown as banner, leave blank to hide)</span></label>
+            <input type="text" id="set-notice" placeholder="e.g. 2024 A/L past papers are now available!" />
+          </div>
+          <div class="form-group">
+            <label>Maintenance Mode</label>
+            <select id="set-maintenance">
+              <option value="false">Off — site is live</option>
+              <option value="true">On — show maintenance page</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button class="btn-primary" onclick="saveSiteSettings()">Save Settings</button>
+          </div>
+          <div id="settings-msg" class="hidden" style="margin-top:12px"></div>
+        </div>
+      </section>
+
+      <!-- ── SECURITY RULES ── -->
+      <section id="section-security-rules" class="section-content hidden">
+        <div class="section-header">
+          <h1>Firebase Security Rules</h1>
+        </div>
+        <div class="card">
+          <p style="color:var(--admin-muted);margin-bottom:20px;line-height:1.7">Copy and paste these rules into your Firebase console. Replace <code style="background:var(--admin-card);padding:2px 6px;border-radius:4px">your-email@example.com</code> with your actual admin email.</p>
+
+          <h3 style="margin-bottom:10px">Firestore Rules</h3>
+          <pre class="code-block">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token.email in [
+          "your-email@example.com"
+        ];
+    }
+
+    match /resources/{resourceId} {
+      allow read: if resource.data.status == "published" || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if resource.data.status == "active" || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /subjects/{subjectId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /siteSettings/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /brokenReports/{reportId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}</pre>
+
+          <h3 style="margin:28px 0 10px">Storage Rules</h3>
+          <pre class="code-block">rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token.email in [
+          "your-email@example.com"
+        ];
+    }
+
+    match /resources/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin()
+        && request.resource.size < 100 * 1024 * 1024;
+    }
+  }
+}</pre>
+
+          <div style="margin-top:20px;padding:16px;background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.3);border-radius:10px">
+            <strong style="color:var(--admin-cyan)">Setup Steps</strong>
+            <ol style="color:var(--admin-muted);margin-top:10px;padding-left:20px;line-height:2">
+              <li>Open <a href="https://console.firebase.google.com" target="_blank" style="color:var(--admin-cyan)">Firebase Console</a></li>
+              <li>Go to Firestore → Rules → paste Firestore rules above</li>
+              <li>Go to Storage → Rules → paste Storage rules above</li>
+              <li>Replace <code style="background:var(--admin-card);padding:2px 6px;border-radius:4px">your-email@example.com</code> in both rule sets</li>
+              <li>Publish both rule sets</li>
+              <li>Open <code style="background:var(--admin-card);padding:2px 6px;border-radius:4px">firebase-config.js</code> and fill in your Firebase config</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+  CONFIRM MODAL
+═══════════════════════════════════════════════════ -->
+<div id="confirm-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3 id="modal-title">Confirm Action</h3>
+    <p id="modal-message" style="color:var(--admin-muted);margin:10px 0 20px;line-height:1.6"></p>
+    <div class="modal-actions">
+      <button class="btn-danger" id="modal-confirm-btn">Confirm</button>
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+  TOAST NOTIFICATIONS
+═══════════════════════════════════════════════════ -->
+<div id="toast-container"></div>
+
+<!-- SIDEBAR OVERLAY (mobile) -->
+<div class="sidebar-overlay hidden" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<script type="module" src="admin.js"></script>
+</body>
+</html>
