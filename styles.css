@@ -589,6 +589,11 @@ footer {
 }
 
 /* ── COUNTDOWN ───────────────────────────────────────────── */
+.countdown-section {
+  padding: 34px 32px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
 .countdown-card {
   background: linear-gradient(135deg, var(--bg3) 0%, var(--bg4) 100%);
   border: 1px solid rgba(196,125,14,0.2);

@@ -1,27 +1,54 @@
+import { firebaseConfig } from "./firebase-config.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  updateDoc,
+  query,
+  where,
+  increment,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 (function () {
   const store = window.TDRStore;
   const esc = store.esc;
+  const app = initializeApp(firebaseConfig, "public-app");
+  const db = getFirestore(app);
+
   const streams = ["All Streams", "Physical Science", "Bio Science", "Commerce", "Arts", "Technology", "Common Resources"];
   const types = ["All Types", "Past Paper", "Marking Scheme", "Model Paper", "Term Test Paper", "School Paper", "Book", "Syllabus", "Short Note"];
   const mediums = ["All Mediums", "Tamil", "Sinhala", "English", "Bilingual"];
+  const fallbackExamDate = "2026-11-10T00:00:00+05:30";
 
-  let state = { q: "", stream: "", subject: "", type: "", medium: "", year: "" };
+  let state = {
+    q: "",
+    stream: "",
+    subject: "",
+    type: "",
+    medium: "",
+    year: "",
+    resources: store.getResources().filter((row) => row.status === "published"),
+    settings: store.getSettings(),
+    subjects: store.getSubjects()
+  };
 
-  function publishedResources() {
-    return store.getResources().filter((row) => row.status === "published");
+  function badge(type, label) {
+    return `<span class="badge badge-${type}">${esc(label)}</span>`;
   }
 
-  function filteredResources() {
-    const q = state.q.toLowerCase();
-    return publishedResources().filter((row) => {
-      const haystack = [row.title, row.subject, row.stream, row.type, row.medium, row.year, row.source, ...(row.tags || [])].join(" ").toLowerCase();
-      return (!q || haystack.includes(q)) &&
-        (!state.stream || row.stream === state.stream) &&
-        (!state.subject || row.subject === state.subject) &&
-        (!state.type || row.type === state.type) &&
-        (!state.medium || row.medium === state.medium) &&
-        (!state.year || row.year === state.year);
-    });
+  function urlFor(row) {
+    return row.fileUrl || row.externalUrl || "";
+  }
+
+  function resourceIcon(row) {
+    if (row.type === "Marking Scheme") return "OK";
+    if (row.type === "Book" || row.type === "Syllabus") return "BK";
+    if (row.type === "Short Note") return "NT";
+    return "PDF";
   }
 
   function unique(rows, key) {
@@ -35,26 +62,80 @@
     }).join("");
   }
 
-  function renderNav(settings) {
+  function filteredResources(base = state.resources) {
+    const q = state.q.toLowerCase();
+    return base.filter((row) => {
+      const haystack = [row.title, row.subject, row.stream, row.type, row.medium, row.year, row.source, ...(row.tags || [])].join(" ").toLowerCase();
+      return (!q || haystack.includes(q)) &&
+        (!state.stream || row.stream === state.stream) &&
+        (!state.subject || row.subject === state.subject) &&
+        (!state.type || row.type === state.type) &&
+        (!state.medium || row.medium === state.medium) &&
+        (!state.year || row.year === state.year);
+    });
+  }
+
+  async function loadFirebaseData() {
+    try {
+      const resourceSnap = await getDocs(query(collection(db, "resources"), where("status", "==", "published")));
+      const resources = [];
+      resourceSnap.forEach((item) => resources.push({ id: item.id, ...item.data() }));
+      if (resources.length) state.resources = resources;
+
+      const subjectSnap = await getDocs(collection(db, "subjects"));
+      const subjects = [];
+      subjectSnap.forEach((item) => subjects.push({ id: item.id, ...item.data() }));
+      if (subjects.length) state.subjects = subjects;
+    } catch (error) {
+      console.warn("[TDR] Firebase public data unavailable, using local fallback.", error);
+    }
+  }
+
+  function renderNav(active = "Home") {
     const links = [
-      ["Resources", "#resources"],
-      ["Subjects", "#subjects"],
+      ["Home", "#home"],
+      ["Past Papers", "#papers"],
+      ["Model Papers", "#papers?type=Model%20Paper"],
+      ["Marking Schemes", "#papers?type=Marking%20Scheme"],
+      ["Books & Syllabuses", "#papers?type=Syllabus"],
+      ["Short Notes", "#papers?type=Short%20Note"],
       ["Study Tools", "#tools"],
-      ["Admin", "admin.html"]
-    ].map(([label, href]) => `<a class="nav-link" href="${href}">${label}</a>`).join("");
+      ["Admin", "admin/"]
+    ].map(([label, href]) => `<a class="nav-link${label === active ? " active" : ""}" href="${href}">${label}</a>`).join("");
+
     return `<nav>
-      <a class="nav-logo" href="#top"><div class="nav-logo-icon">TDR</div><span class="nav-logo-text">${esc(settings.name)}</span></a>
+      <a class="nav-logo" href="#home">
+        <div class="nav-logo-icon">TDR</div>
+        <span class="nav-logo-text">${esc(state.settings.name || "The Dark Room")}</span>
+      </a>
       <div class="nav-links">${links}</div>
       <div class="nav-right">
-        <div class="nav-search-box"><input id="nav-search" placeholder="Search papers, subjects..." type="text" value="${esc(state.q)}" /></div>
+        <div class="nav-search-box">
+          <input id="nav-search" placeholder="Search papers, subjects..." type="text" value="${esc(state.q)}" />
+        </div>
         <button class="theme-toggle" aria-label="Toggle theme"></button>
       </div>
     </nav>`;
   }
 
-  function renderFilters(resources) {
-    const subjects = ["All Subjects", ...unique(resources, "subject")];
-    const years = ["All Years", ...unique(resources, "year").sort((a, b) => Number(b) - Number(a))];
+  function renderFooter() {
+    return `<footer>
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <div class="footer-logo"><div class="footer-logo-icon">TDR</div><span class="footer-logo-name">${esc(state.settings.name || "The Dark Room")}</span></div>
+          <p>${esc(state.settings.tagline || "Sri Lankan A/L resources arranged by stream, subject, year and medium.")}</p>
+        </div>
+        <div class="footer-col"><h4>Resources</h4><a href="#papers">Past Papers</a><a href="#papers?type=Marking%20Scheme">Marking Schemes</a><a href="#papers?type=Model%20Paper">Model Papers</a></div>
+        <div class="footer-col"><h4>Subjects</h4><a href="#subject=Chemistry">Chemistry</a><a href="#subject=Physics">Physics</a><a href="#subject=Combined%20Mathematics">Combined Maths</a></div>
+        <div class="footer-col"><h4>Admin</h4><a href="admin/">Admin Login</a><a href="#tools">Study Tools</a><a href="#papers">Browse Library</a></div>
+      </div>
+      <div class="footer-bottom"><span>© 2026 ${esc(state.settings.name || "The Dark Room")}</span><span>Sources: DoE Sri Lanka, e-Thaksalawa, NIE and credited schools.</span></div>
+    </footer>`;
+  }
+
+  function renderFilters() {
+    const years = ["All Years", ...unique(state.resources, "year").sort((a, b) => Number(b) - Number(a))];
+    const subjects = ["All Subjects", ...unique(state.resources, "subject")];
     return `<div class="home-filter-panel">
       <div class="home-filter-title">Find the exact file fast</div>
       <div class="home-filter-grid">
@@ -67,101 +148,283 @@
     </div>`;
   }
 
-  function renderResourceCard(row) {
-    const url = row.fileUrl || row.externalUrl || "";
-    return `<div class="resource-card" data-id="${esc(row.id)}">
-      <div class="resource-card-top">
-        <div class="resource-card-subject"><div class="resource-subject-dot" style="background:var(--blue)"></div><div class="resource-subject-name">${esc(row.subject)} - ${esc(row.stream)}</div></div>
-        <div class="resource-card-title">${esc(row.title)}</div>
-        <div class="resource-card-badges">
-          <span class="badge badge-blue">${esc(row.type)}</span>
-          <span class="badge badge-gray">${esc(row.medium)}</span>
-          ${row.year ? `<span class="badge badge-amber">${esc(row.year)}</span>` : ""}
+  function countdownParts() {
+    const target = new Date(state.settings.examDate || fallbackExamDate).getTime();
+    const diff = Math.max(0, target - Date.now());
+    return {
+      days: Math.floor(diff / 86400000),
+      hours: Math.floor(diff / 3600000) % 24,
+      minutes: Math.floor(diff / 60000) % 60
+    };
+  }
+
+  function renderCountdown() {
+    const cd = countdownParts();
+    return `<section class="countdown-section">
+      <div class="countdown-card">
+        <div>
+          <div class="section-label" style="margin-bottom:6px">Exam Countdown</div>
+          <div class="countdown-title">G.C.E. Advanced Level Examination</div>
+          <div class="countdown-sub" style="margin-top:4px">Start revision today. Download subject papers by year, medium and type.</div>
         </div>
+        <div class="countdown-nums">
+          <div class="countdown-unit"><div class="countdown-num" data-countdown="days">${cd.days}</div><div class="countdown-lbl">Days</div></div>
+          <div class="countdown-sep">:</div>
+          <div class="countdown-unit"><div class="countdown-num" data-countdown="hours">${String(cd.hours).padStart(2, "0")}</div><div class="countdown-lbl">Hours</div></div>
+          <div class="countdown-sep">:</div>
+          <div class="countdown-unit"><div class="countdown-num" data-countdown="minutes">${String(cd.minutes).padStart(2, "0")}</div><div class="countdown-lbl">Minutes</div></div>
+        </div>
+      </div>
+    </section>`;
+  }
+
+  function renderQuickCards() {
+    const cards = [
+      ["Past Papers", "By year & medium", "#papers?type=Past%20Paper"],
+      ["Marking Schemes", "Answer guides", "#papers?type=Marking%20Scheme"],
+      ["Model Papers", "Practice papers", "#papers?type=Model%20Paper"],
+      ["Books & Syllabuses", "Official guides", "#papers?type=Syllabus"],
+      ["Short Notes", "Fast revision", "#papers?type=Short%20Note"]
+    ];
+    return `<div style="background:var(--bg1);border-bottom:1px solid var(--border);padding:24px 32px;">
+      <div class="quick-grid">${cards.map(([title, count, href]) => `<a class="quick-card" href="${href}"><div class="quick-card-icon">${title.slice(0, 2).toUpperCase()}</div><div class="quick-card-title">${title}</div><div class="quick-card-count">${count}</div></a>`).join("")}</div>
+    </div>`;
+  }
+
+  function renderSubjectCards() {
+    const counts = state.resources.reduce((acc, row) => {
+      acc[row.subject] = (acc[row.subject] || 0) + 1;
+      return acc;
+    }, {});
+    const rows = state.subjects.filter((row) => row.status !== "hidden").sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+    return rows.map((row) => `<a class="subject-card" href="#subject=${encodeURIComponent(row.name)}">
+      <div class="subject-icon" style="background:rgba(37,99,235,0.1)">${esc(row.name.slice(0, 2).toUpperCase())}</div>
+      <div><div class="subject-name">${esc(row.name)}</div><div class="subject-meta">${esc(row.stream || "A/L")} · ${counts[row.name] || 0} resources</div></div>
+    </a>`).join("");
+  }
+
+  function renderHomeResourceCard(row) {
+    return `<div class="resource-card">
+      <div class="resource-card-top">
+        <div class="resource-card-subject"><div class="resource-subject-dot" style="background:var(--blue)"></div><div class="resource-subject-name">${esc(row.subject)} · ${esc(row.stream || "A/L")}</div></div>
+        <div class="resource-card-title">${esc(row.title)}</div>
+        <div class="resource-card-badges">${badge("blue", row.type || "Resource")}${badge("gray", row.medium || "Medium")}${row.year ? badge("amber", row.year) : ""}</div>
         <div class="resource-detail-grid">
-          <span><strong>Source</strong>${esc(row.source || "Not listed")}</span>
-          <span><strong>File</strong>${esc(row.fileType || "PDF")}</span>
-          <span><strong>Size</strong>${esc(row.fileSizeLabel || "Link")}</span>
-          <span><strong>Downloads</strong>${Number(row.downloadCount || 0)}</span>
+          <span><strong>Year</strong>${esc(row.year || "-")}</span>
+          <span><strong>Medium</strong>${esc(row.medium || "-")}</span>
+          <span><strong>Type</strong>${esc(row.type || "-")}</span>
+          <span><strong>File</strong>${esc(row.fileSizeLabel || row.fileType || "PDF")}</span>
         </div>
       </div>
       <div class="resource-card-bottom resource-card-actions">
-        <button class="resource-view-btn" data-view="${esc(row.id)}"${url ? "" : " disabled"}>View Online</button>
-        <button class="resource-dl-btn" data-download="${esc(row.id)}"${url ? "" : " disabled"}>Download PDF</button>
-        <button class="resource-view-btn" data-report="${esc(row.id)}">Report Link</button>
+        <button class="resource-view-btn" data-paper="${esc(row.id)}">View Details</button>
+        <button class="resource-dl-btn" data-open="${esc(row.id)}">Download PDF</button>
       </div>
     </div>`;
   }
 
-  function renderSubjects() {
-    const counts = publishedResources().reduce((acc, row) => {
-      acc[row.subject] = (acc[row.subject] || 0) + 1;
-      return acc;
-    }, {});
-    return store.getSubjects().filter((row) => row.status !== "hidden").sort((a, b) => Number(a.order || 0) - Number(b.order || 0)).map((row) => `
-      <a class="subject-card" href="#resources" data-subject-link="${esc(row.name)}">
-        <div class="subject-icon" style="background:rgba(37,99,235,0.1)">${esc(row.name.slice(0, 2).toUpperCase())}</div>
-        <div><div class="subject-name">${esc(row.name)}</div><div class="subject-meta">${esc(row.stream || "A/L")} - ${counts[row.name] || 0} resources</div></div>
-      </a>`).join("");
+  function renderHome() {
+    const shown = filteredResources().slice(0, 6);
+    return `${renderNav("Home")}
+      <section class="hero" id="home">
+        <div class="hero-grid-bg"></div>
+        <div class="hero-glow"></div>
+        <div class="hero-content">
+          <div class="hero-pretag"><span></span>Free A/L Resources · Sri Lanka</div>
+          <h1>Your A/L resources,<br><em>finally organized.</em></h1>
+          <p>${esc(state.settings.tagline || "Past papers, marking schemes, model papers and notes for all streams - Tamil, Sinhala and English medium.")}</p>
+          <div class="hero-search">
+            <input id="hero-search-input" placeholder="Search papers, subjects..." type="text" value="${esc(state.q)}" />
+            <button class="hero-search-btn" id="hero-search-btn">Search</button>
+          </div>
+          ${state.settings.notice ? `<div class="source-credit" style="margin-top:18px">${esc(state.settings.notice)}</div>` : ""}
+          ${renderFilters()}
+          <div class="hero-stats">
+            <div class="hero-stat"><div class="hero-stat-num">${state.resources.length}</div><div class="hero-stat-lbl">Published resources</div></div>
+            <div class="hero-stat"><div class="hero-stat-num">${state.subjects.length}</div><div class="hero-stat-lbl">Subjects</div></div>
+            <div class="hero-stat"><div class="hero-stat-num">3</div><div class="hero-stat-lbl">Mediums</div></div>
+            <div class="hero-stat"><div class="hero-stat-num">Live</div><div class="hero-stat-lbl">Firebase ready</div></div>
+          </div>
+        </div>
+      </section>
+      ${renderQuickCards()}
+      <section style="padding:34px 32px;max-width:1180px;margin:0 auto;" id="subjects">
+        <div class="section-hdr"><h2>Browse by subject</h2><a href="#papers">View all resources →</a></div>
+        <div class="stream-tabs"><div class="stream-tab active">Science</div><div class="stream-tab">Commerce</div><div class="stream-tab">Arts</div><div class="stream-tab">Technology</div><div class="stream-tab">Common</div></div>
+        <div class="subject-grid">${renderSubjectCards()}</div>
+      </section>
+      <section style="padding:34px 32px;max-width:1180px;margin:0 auto;" id="resources">
+        <div class="section-hdr"><h2>Recently added resources</h2><a href="#papers">See all papers →</a></div>
+        <div class="resource-grid">${shown.length ? shown.map(renderHomeResourceCard).join("") : `<div class="resources-empty">No resources found. Add published resources in admin.</div>`}</div>
+      </section>
+      ${renderCountdown()}
+      ${renderTools()}
+      ${renderFooter()}`;
+  }
+
+  function renderTools() {
+    return `<section style="padding:34px 32px;max-width:1180px;margin:0 auto;" id="tools">
+      <div class="section-hdr"><h2>Exam tools</h2><a href="#papers">Use with past papers →</a></div>
+      <div class="tools-grid">
+        <div class="tool-card"><div class="tool-icon">25</div><div class="tool-title">Pomodoro Timer</div><div class="tool-desc">25-minute focus sessions with short breaks for daily revision.</div></div>
+        <div class="tool-card"><div class="tool-icon">PLAN</div><div class="tool-title">Study Timetable Generator</div><div class="tool-desc">Use subjects and remaining days to plan weekly revision.</div></div>
+        <div class="tool-card"><div class="tool-icon">Z</div><div class="tool-title">Z-score Guide</div><div class="tool-desc">Keep official Z-score and university entry links as resources.</div></div>
+      </div>
+    </section>`;
+  }
+
+  function renderPaperList(rows) {
+    return rows.map((row) => `<div class="rlist-item">
+      <div class="rlist-icon">${resourceIcon(row)}</div>
+      <div class="rlist-main">
+        <div class="rlist-title">${esc(row.title)}</div>
+        <div class="rlist-badges" style="margin:5px 0">${badge("blue", row.type || "Resource")}${badge("gray", row.medium || "Medium")}${row.year ? badge("amber", row.year) : ""}</div>
+        <div class="rlist-meta">
+          <div class="rlist-meta-item">${esc(row.fileType || "PDF")}</div>
+          <div class="rlist-meta-item">${esc(row.fileSizeLabel || "Link")}</div>
+          <div class="rlist-meta-item">Downloads: ${Number(row.downloadCount || 0)}</div>
+          <div class="rlist-meta-item">Source: ${esc(row.source || "Not listed")}</div>
+        </div>
+      </div>
+      <div class="rlist-action">
+        <button class="rlist-view-btn" data-paper="${esc(row.id)}">View Details</button>
+        <button class="rlist-dl-btn" data-open="${esc(row.id)}">Download PDF</button>
+      </div>
+    </div>`).join("");
+  }
+
+  function renderPapers(subjectName = "") {
+    const subjectRows = state.resources.filter((row) => !subjectName || row.subject === subjectName);
+    const shown = filteredResources(subjectRows);
+    const subject = state.subjects.find((row) => row.name === subjectName);
+    const title = subjectName || "All A/L Resources";
+    const crumbs = `<a href="#home">Home</a><span class="breadcrumb-sep">›</span><span style="color:var(--text1)">${esc(title)}</span>`;
+
+    return `${renderNav("Past Papers")}
+      <div class="subject-page-hero">
+        <div class="breadcrumb" style="position:absolute;top:16px;left:32px;font-size:12px">${crumbs}</div>
+        <div style="margin-top:20px;display:flex;align-items:center;gap:24px;width:100%">
+          <div class="subject-page-icon">${esc(title.slice(0, 2).toUpperCase())}</div>
+          <div>
+            <div class="section-label" style="margin-bottom:4px">${esc(subject?.stream || "A/L Resource Library")}</div>
+            <div class="subject-page-title">${esc(title)}</div>
+            <div class="subject-page-desc">${esc(subject?.desc || "Past papers, marking schemes, books, syllabuses and notes arranged by medium, year and type.")}</div>
+          </div>
+          <div class="subject-page-stats">
+            <div><div class="spstat-num">${subjectRows.length}</div><div class="spstat-lbl">Resources</div></div>
+            <div><div class="spstat-num">${unique(subjectRows, "year").length || "-"}</div><div class="spstat-lbl">Years</div></div>
+            <div><div class="spstat-num">${unique(subjectRows, "medium").length || "-"}</div><div class="spstat-lbl">Mediums</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <span class="filter-label">Filter:</span>
+        ${types.map((type, index) => `<button class="filter-chip${(state.type || "All Types") === type ? " active" : index === 0 && !state.type ? " active" : ""}" data-type-chip="${esc(type.replace(/^All Types$/, ""))}">${esc(type)}</button>`).join("")}
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">${renderCompactSelects()}</div>
+      </div>
+      <div style="padding:28px 32px;max-width:1180px;margin:0 auto;">
+        <div class="resource-list">${shown.length ? renderPaperList(shown) : `<div class="resources-empty">No papers found for this filter.</div>`}</div>
+      </div>
+      ${renderFooter()}`;
+  }
+
+  function renderCompactSelects() {
+    const years = ["All Years", ...unique(state.resources, "year").sort((a, b) => Number(b) - Number(a))];
+    return `
+      <select class="filter-select" data-filter="stream">${optionList(streams, state.stream)}</select>
+      <select class="filter-select" data-filter="year">${optionList(years, state.year)}</select>
+      <select class="filter-select" data-filter="medium">${optionList(mediums, state.medium)}</select>`;
+  }
+
+  function detailMeta(row) {
+    return [
+      ["Subject", row.subject],
+      ["Stream", row.stream],
+      ["Year", row.year],
+      ["Exam Type", row.examType || "G.C.E. Advanced Level"],
+      ["Medium", row.medium],
+      ["Paper", row.paperPart || "Full Paper"],
+      ["File", row.fileType || "PDF"],
+      ["File Size", row.fileSizeLabel || "Link"],
+      ["Source", row.source || "Not listed"],
+      ["Downloads", Number(row.downloadCount || 0)]
+    ].map(([key, val]) => `<div class="dl-meta-cell"><div class="dl-meta-key">${esc(key)}</div><div class="dl-meta-val">${esc(val || "-")}</div></div>`).join("");
+  }
+
+  function renderPaperDetail(id) {
+    const row = state.resources.find((item) => item.id === id) || state.resources[0];
+    if (!row) return renderPapers();
+    const related = state.resources.filter((item) => item.id !== row.id && item.subject === row.subject).slice(0, 4);
+    return `${renderNav("Past Papers")}
+      <div class="page-header">
+        <div class="breadcrumb"><a href="#home">Home</a><span class="breadcrumb-sep">›</span><a href="#subject=${encodeURIComponent(row.subject)}">${esc(row.subject)}</a><span class="breadcrumb-sep">›</span><span style="color:var(--text1)">${esc(row.title)}</span></div>
+        <h1>${esc(row.title)}</h1>
+        <div class="page-header-sub">${esc(row.paperPart || "Full Paper")} · ${esc(row.examType || "G.C.E. Advanced Level")}</div>
+      </div>
+      <div class="download-layout">
+        <div>
+          <div class="dl-main-card">
+            <div class="dl-preview">
+              <div class="dl-badge-official">${esc(row.source || "Educational Resource")}</div>
+              <div style="display:flex;gap:16px"><div class="dl-preview-pdf"><div class="dl-preview-pdf-icon">PDF</div><div class="dl-preview-pdf-name">${esc(row.type || "Resource")}</div></div></div>
+            </div>
+            <div class="dl-info">
+              <div class="dl-meta-grid">${detailMeta(row)}</div>
+              <div class="dl-actions">
+                <button class="dl-btn-primary" data-open="${esc(row.id)}">Download Paper PDF</button>
+                <button class="dl-btn-secondary" data-open="${esc(row.id)}">View PDF Online</button>
+                <button class="dl-btn-secondary" data-report="${esc(row.id)}" style="font-size:13px;padding:10px 20px">Report Broken Link</button>
+              </div>
+              <div class="source-credit"><strong>Source credit:</strong> ${esc(row.source || "Source not listed. Add source in admin for copyright-safe publishing.")}</div>
+            </div>
+          </div>
+        </div>
+        <div class="dl-sidebar">
+          <div class="dl-sidebar-card" style="border-color:rgba(196,125,14,0.25);background:var(--amber-dim)">
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--amber);margin-bottom:10px">Related ${esc(row.subject)} Resources</div>
+            <button style="width:100%;padding:10px;background:var(--amber);border:none;border-radius:8px;color:var(--dl-btn-text);font-family:var(--ff-body);font-size:13px;font-weight:700;cursor:pointer;" onclick="location.hash='subject=${encodeURIComponent(row.subject)}'">View Subject Page</button>
+          </div>
+          <div class="dl-sidebar-card">
+            <div class="dl-sidebar-title">Related papers</div>
+            ${related.length ? related.map((item) => `<div class="related-item" data-paper="${esc(item.id)}"><div class="related-icon">${resourceIcon(item)}</div><div><div class="related-item-title">${esc(item.title)}</div><div class="related-item-meta">${esc(item.type)} · ${esc(item.medium)} · ${esc(item.year || "")}</div></div></div>`).join("") : `<div class="related-item-meta">No related resources yet.</div>`}
+          </div>
+        </div>
+      </div>
+      <div style="max-width:1100px;margin:0 auto 40px;padding:0 32px">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 22px;font-size:12px;color:var(--text2);line-height:1.8">
+          <strong style="color:var(--text1)">Disclaimer:</strong> Resources are provided for Sri Lankan A/L educational access. Copyright belongs to the respective owners. Use admin settings to correct sources or remove files when needed.
+        </div>
+      </div>
+      ${renderFooter()}`;
+  }
+
+  function parseHash() {
+    const raw = decodeURIComponent(location.hash || "#home");
+    if (raw.startsWith("#paper=")) return { page: "paper", id: raw.slice(7) };
+    if (raw.startsWith("#subject=")) return { page: "subject", subject: raw.slice(9) };
+    if (raw.startsWith("#papers")) {
+      const typeMatch = raw.match(/type=([^&]+)/);
+      if (typeMatch) state.type = typeMatch[1];
+      return { page: "papers" };
+    }
+    if (raw.startsWith("#tools")) return { page: "tools" };
+    return { page: "home" };
   }
 
   function render() {
-    const settings = store.getSettings();
-    document.title = settings.seoTitle || `${settings.name} - A/L Resources`;
-    const resources = publishedResources();
-    const shown = filteredResources();
-    if (settings.maintenance === "true") {
-      document.body.innerHTML = `<main class="hero" id="top"><div class="hero-content"><h1>${esc(settings.name)} is under maintenance.</h1><p>${esc(settings.tagline)}</p></div></main>`;
+    document.title = state.settings.seoTitle || `${state.settings.name || "The Dark Room"} - A/L Resources`;
+    if (state.settings.maintenance === "true") {
+      document.body.innerHTML = `<main class="hero"><div class="hero-content"><h1>${esc(state.settings.name || "The Dark Room")} is under maintenance.</h1><p>${esc(state.settings.tagline || "")}</p></div></main>`;
       return;
     }
-
-    document.body.innerHTML = `${renderNav(settings)}
-      <section class="hero" id="top">
-        <div class="hero-grid-bg"></div>
-        <div class="hero-content">
-          <div class="hero-pretag"><span></span>Free A/L Resources - Sri Lanka</div>
-          <h1>${esc(settings.name)}<br><em>resources that actually work.</em></h1>
-          <p>${esc(settings.tagline)}</p>
-          <div class="hero-search">
-            <input id="hero-search-input" placeholder="Search subject, year, medium or paper type..." type="text" value="${esc(state.q)}" />
-            <button class="hero-search-btn" id="hero-search-btn">Search</button>
-          </div>
-          ${settings.notice ? `<div class="source-credit" style="margin-top:18px">${esc(settings.notice)}</div>` : ""}
-          ${renderFilters(resources)}
-          <div class="hero-stats">
-            <div class="hero-stat"><div class="hero-stat-num">${resources.length}</div><div class="hero-stat-lbl">Published resources</div></div>
-            <div class="hero-stat"><div class="hero-stat-num">${store.getSubjects().length}</div><div class="hero-stat-lbl">Subjects</div></div>
-            <div class="hero-stat"><div class="hero-stat-num">3</div><div class="hero-stat-lbl">Mediums</div></div>
-            <div class="hero-stat"><div class="hero-stat-num">Local</div><div class="hero-stat-lbl">Admin ready</div></div>
-          </div>
-        </div>
-      </section>
-      <section style="padding:28px 32px;max-width:1180px;margin:0 auto" id="subjects">
-        <div class="section-hdr"><h2>Subjects</h2><a href="admin.html">Manage in admin</a></div>
-        <div class="subject-grid">${renderSubjects()}</div>
-      </section>
-      <section style="padding:28px 32px;max-width:1180px;margin:0 auto" id="resources">
-        <div class="section-hdr"><h2>Resources</h2><a href="admin.html">Add resource</a></div>
-        <div class="resource-grid">${shown.length ? shown.map(renderResourceCard).join("") : `<div class="resources-empty">No resources found. Try another filter or add resources in admin.</div>`}</div>
-      </section>
-      <section style="padding:28px 32px;max-width:1180px;margin:0 auto" id="tools">
-        <div class="section-hdr"><h2>Study Tools</h2><a href="admin.html">Edit notice</a></div>
-        <div class="tools-grid">
-          <div class="tool-card"><div class="tool-icon">25</div><div class="tool-title">Pomodoro Timer</div><div class="tool-desc">Use 25 minute focused revision sessions with short breaks.</div></div>
-          <div class="tool-card"><div class="tool-icon">Z</div><div class="tool-title">Z-score Guide</div><div class="tool-desc">Keep official university guidance links as resources in admin.</div></div>
-          <div class="tool-card"><div class="tool-icon">PDF</div><div class="tool-title">Paper Library</div><div class="tool-desc">Filter by subject, year, medium and resource type.</div></div>
-        </div>
-      </section>
-      <footer><div class="footer-inner"><div class="footer-brand"><div class="footer-logo"><div class="footer-logo-icon">TDR</div><span class="footer-logo-name">${esc(settings.name)}</span></div><p>${esc(settings.tagline)}</p></div></div><div class="footer-bottom"><span>© 2026 ${esc(settings.name)}</span><span>Sources: DoE Sri Lanka, e-Thaksalawa, NIE and clearly credited schools.</span></div></footer>`;
-
+    const route = parseHash();
+    if (route.page === "paper") document.body.innerHTML = renderPaperDetail(route.id);
+    else if (route.page === "subject") document.body.innerHTML = renderPapers(route.subject);
+    else if (route.page === "papers") document.body.innerHTML = renderPapers("");
+    else if (route.page === "tools") document.body.innerHTML = `${renderNav("Study Tools")}${renderCountdown()}${renderTools()}${renderFooter()}`;
+    else document.body.innerHTML = renderHome();
     bind();
     if (window.TDRTheme) window.TDRTheme.init();
-  }
-
-  function setQuery(value) {
-    state.q = value.trim();
-    render();
-    location.hash = "#resources";
   }
 
   function bind() {
@@ -169,48 +432,88 @@
       select.addEventListener("change", () => {
         state[select.dataset.filter] = select.value;
         render();
-        location.hash = "#resources";
+      });
+    });
+    document.querySelectorAll("[data-type-chip]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.type = button.dataset.typeChip;
+        render();
       });
     });
     document.querySelectorAll("#hero-search-input,#nav-search").forEach((input) => {
       input.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") setQuery(input.value);
+        if (event.key === "Enter") {
+          state.q = input.value.trim();
+          location.hash = "#papers";
+          render();
+        }
       });
     });
     const searchBtn = document.getElementById("hero-search-btn");
-    if (searchBtn) searchBtn.addEventListener("click", () => setQuery(document.getElementById("hero-search-input").value));
-    document.querySelectorAll("[data-subject-link]").forEach((link) => {
-      link.addEventListener("click", () => {
-        state.subject = link.dataset.subjectLink;
-        render();
+    if (searchBtn) searchBtn.addEventListener("click", () => {
+      state.q = document.getElementById("hero-search-input").value.trim();
+      location.hash = "#papers";
+      render();
+    });
+    document.querySelectorAll("[data-paper]").forEach((item) => {
+      item.addEventListener("click", () => {
+        location.hash = `paper=${item.dataset.paper}`;
       });
     });
-    document.querySelectorAll("[data-view],[data-download]").forEach((button) => {
-      button.addEventListener("click", () => openResource(button.dataset.view || button.dataset.download));
+    document.querySelectorAll("[data-open]").forEach((button) => {
+      button.addEventListener("click", () => openResource(button.dataset.open));
     });
     document.querySelectorAll("[data-report]").forEach((button) => {
       button.addEventListener("click", () => reportResource(button.dataset.report));
     });
   }
 
-  function openResource(id) {
-    const rows = store.getResources();
-    const row = rows.find((item) => item.id === id);
-    const url = row && (row.fileUrl || row.externalUrl);
-    if (!url) return;
-    row.downloadCount = Number(row.downloadCount || 0) + 1;
-    store.saveResource(row);
+  async function openResource(id) {
+    const row = state.resources.find((item) => item.id === id);
+    const url = row && urlFor(row);
+    if (!url) {
+      alert("No download link is saved for this resource yet.");
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "resources", id), { downloadCount: increment(1) });
+    } catch (_) {
+      row.downloadCount = Number(row.downloadCount || 0) + 1;
+      store.saveResource(row);
+    }
     window.open(url, "_blank", "noopener");
   }
 
-  function reportResource(id) {
-    const row = store.getResources().find((item) => item.id === id);
+  async function reportResource(id) {
+    const row = state.resources.find((item) => item.id === id);
     const message = prompt(`Report a problem with:\n${row ? row.title : "this resource"}`, "File not opening");
     if (message === null) return;
-    store.saveReport({ resourceId: id, resourceTitle: row ? row.title : id, problemType: message || "Broken link", message: "", status: "open" });
-    alert("Thanks. The report is saved in the admin panel.");
+    const report = { resourceId: id, resourceTitle: row ? row.title : id, problemType: message || "Broken link", message: "", status: "open" };
+    try {
+      await addDoc(collection(db, "brokenReports"), { ...report, createdAt: serverTimestamp() });
+    } catch (_) {
+      store.saveReport(report);
+    }
+    alert("Thanks. The report was saved for admin review.");
   }
 
-  window.addEventListener("tdr-store-change", render);
-  render();
+  function tickCountdown() {
+    const cd = countdownParts();
+    const days = document.querySelector('[data-countdown="days"]');
+    const hours = document.querySelector('[data-countdown="hours"]');
+    const minutes = document.querySelector('[data-countdown="minutes"]');
+    if (days) days.textContent = cd.days;
+    if (hours) hours.textContent = String(cd.hours).padStart(2, "0");
+    if (minutes) minutes.textContent = String(cd.minutes).padStart(2, "0");
+  }
+
+  window.addEventListener("hashchange", render);
+  window.addEventListener("tdr-store-change", () => {
+    state.settings = store.getSettings();
+    state.subjects = store.getSubjects();
+    render();
+  });
+
+  loadFirebaseData().then(render);
+  setInterval(tickCountdown, 30000);
 })();
