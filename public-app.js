@@ -194,7 +194,7 @@ import {
 
     return `<nav>
       <a class="nav-logo" href="#home">
-        <div class="nav-logo-icon"><img src="assets/logo.svg" alt="" width="24" height="24" /></div>
+        <div class="nav-logo-icon"><img src="assets/logo.png?v=custom-logo" alt="" width="24" height="24" /></div>
         <span class="nav-logo-text">${esc(state.settings.name || "A/L Paper Hub")}</span>
       </a>
       <div class="nav-links">${links}</div>
@@ -211,7 +211,7 @@ import {
     return `<footer>
       <div class="footer-inner">
         <div class="footer-brand">
-          <div class="footer-logo"><div class="footer-logo-icon"><img src="assets/logo.svg" alt="" width="24" height="24" /></div><span class="footer-logo-name">${esc(state.settings.name || "A/L Paper Hub")}</span></div>
+          <div class="footer-logo"><div class="footer-logo-icon"><img src="assets/logo.png?v=custom-logo" alt="" width="24" height="24" /></div><span class="footer-logo-name">${esc(state.settings.name || "A/L Paper Hub")}</span></div>
           <p>${esc(state.settings.tagline || "Sri Lankan A/L resources arranged by stream, subject, year and medium.")}</p>
         </div>
         <div class="footer-col"><h4>Resources</h4><a href="#papers">Past Papers</a><a href="#papers?type=Marking%20Scheme">Marking Schemes</a><a href="#papers?type=Model%20Paper">Model Papers</a></div>
