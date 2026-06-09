@@ -88,10 +88,49 @@ import {
   }
 
   function resourceIcon(row) {
-    if (row.type === "Marking Scheme") return "OK";
-    if (row.type === "Book" || row.type === "Syllabus") return "BK";
-    if (row.type === "Short Note") return "NT";
-    return "PDF";
+    return resourceEmoji(row.type);
+  }
+
+  function resourceEmoji(type = "") {
+    const value = String(type).toLowerCase();
+    if (value.includes("marking")) return "✅";
+    if (value.includes("model")) return "📝";
+    if (value.includes("book")) return "📘";
+    if (value.includes("syllabus")) return "📋";
+    if (value.includes("short")) return "⚡";
+    if (value.includes("term")) return "🏫";
+    if (value.includes("school")) return "🏛️";
+    return "📄";
+  }
+
+  function subjectEmoji(subject = "") {
+    const value = String(subject).toLowerCase();
+    if (value.includes("chem")) return "⚗️";
+    if (value.includes("physics")) return "🔭";
+    if (value.includes("bio")) return "🧬";
+    if (value.includes("combined") || value.includes("math")) return "📐";
+    if (value.includes("ict") || value.includes("information")) return "💻";
+    if (value.includes("account")) return "📊";
+    if (value.includes("economic")) return "📈";
+    if (value.includes("business")) return "💼";
+    if (value.includes("geo")) return "🌍";
+    if (value.includes("history")) return "📜";
+    if (value.includes("political")) return "🏛️";
+    if (value.includes("english")) return "📖";
+    if (value.includes("agri")) return "🌱";
+    if (value.includes("technology")) return "⚙️";
+    if (value.includes("general")) return "🧠";
+    return "🎓";
+  }
+
+  function quickEmoji(title = "") {
+    const value = String(title).toLowerCase();
+    if (value.includes("past")) return "📄";
+    if (value.includes("marking")) return "✅";
+    if (value.includes("model")) return "📝";
+    if (value.includes("book") || value.includes("syllabus")) return "📚";
+    if (value.includes("note")) return "⚡";
+    return "🎓";
   }
 
   function unique(rows, key) {
@@ -237,7 +276,7 @@ import {
       ["Short Notes", "Fast revision", "#papers?type=Short%20Note"]
     ];
     return `<div style="background:var(--bg1);border-bottom:1px solid var(--border);padding:24px 32px;">
-      <div class="quick-grid">${cards.map(([title, count, href]) => `<a class="quick-card" href="${href}"><div class="quick-card-icon">${title.slice(0, 2).toUpperCase()}</div><div class="quick-card-title">${title}</div><div class="quick-card-count">${count}</div></a>`).join("")}</div>
+      <div class="quick-grid">${cards.map(([title, count, href]) => `<a class="quick-card" href="${href}"><div class="quick-card-icon">${quickEmoji(title)}</div><div class="quick-card-title">${title}</div><div class="quick-card-count">${count}</div></a>`).join("")}</div>
     </div>`;
   }
 
@@ -248,7 +287,7 @@ import {
     }, {});
     const rows = state.subjects.filter((row) => row.status !== "hidden").sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
     return rows.map((row) => `<a class="subject-card" href="#subject=${encodeURIComponent(row.name)}">
-      <div class="subject-icon" style="background:rgba(37,99,235,0.1)">${esc(row.name.slice(0, 2).toUpperCase())}</div>
+      <div class="subject-icon" style="background:rgba(37,99,235,0.1)">${subjectEmoji(row.name)}</div>
       <div><div class="subject-name">${esc(row.name)}</div><div class="subject-meta">${esc(row.stream || "A/L")} - ${counts[row.name] || 0} resources</div></div>
     </a>`).join("");
   }
@@ -256,19 +295,19 @@ import {
   function renderHomeResourceCard(row) {
     return `<div class="resource-card">
       <div class="resource-card-top">
-        <div class="resource-card-subject"><div class="resource-subject-dot" style="background:var(--blue)"></div><div class="resource-subject-name">${esc(row.subject)} - ${esc(row.stream || "A/L")}</div></div>
+        <div class="resource-card-subject"><div class="resource-subject-dot" style="background:var(--blue)"></div><div class="resource-subject-name">${subjectEmoji(row.subject)} ${esc(row.subject)} - ${esc(row.stream || "A/L")}</div></div>
         <div class="resource-card-title">${esc(row.title)}</div>
         <div class="resource-card-badges">${badge("blue", row.type || "Resource")}${badge("gray", row.medium || "Medium")}${row.year ? badge("amber", row.year) : ""}</div>
         <div class="resource-detail-grid">
           <span><strong>Year</strong>${esc(row.year || "-")}</span>
           <span><strong>Medium</strong>${esc(row.medium || "-")}</span>
           <span><strong>Type</strong>${esc(row.type || "-")}</span>
-          <span><strong>File</strong>${esc(row.fileSizeLabel || row.fileType || "PDF")}</span>
+          <span><strong>File</strong>${resourceEmoji(row.type)} ${esc(row.fileSizeLabel || row.fileType || "PDF")}</span>
         </div>
       </div>
       <div class="resource-card-bottom resource-card-actions">
-        <button class="resource-view-btn" data-paper="${esc(row.id)}">View Details</button>
-        <button class="resource-dl-btn" data-open="${esc(row.id)}">Download PDF</button>
+        <button class="resource-view-btn" data-paper="${esc(row.id)}">👁️ View Details</button>
+        <button class="resource-dl-btn" data-open="${esc(row.id)}">⬇️ Download PDF</button>
       </div>
     </div>`;
   }
@@ -320,21 +359,21 @@ import {
       <div class="section-hdr"><h2>Exam tools</h2><a href="#papers">Use with past papers -></a></div>
       <div class="tools-grid">
         <div class="tool-card pomodoro-card">
-          <div class="tool-icon">${modeLabel}</div>
+          <div class="tool-icon">${pomodoro.mode === "focus" ? "⏱️" : "☕"}</div>
           <div class="tool-title">Pomodoro Timer</div>
           <div class="pomodoro-time" data-pomodoro-time>${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}</div>
           <div class="tool-desc" data-pomodoro-status>${pomodoro.running ? `${modeLabel} session running` : `${modeLabel} session ready`}</div>
           <div class="pomodoro-actions">
-            <button class="pomodoro-btn primary" data-pomodoro-action="toggle">${pomodoro.running ? "Pause" : "Start"}</button>
-            <button class="pomodoro-btn" data-pomodoro-action="reset">Reset</button>
+            <button class="pomodoro-btn primary" data-pomodoro-action="toggle">${pomodoro.running ? "⏸️ Pause" : "▶️ Start"}</button>
+            <button class="pomodoro-btn" data-pomodoro-action="reset">🔄 Reset</button>
           </div>
           <div class="pomodoro-modes">
             <button class="${pomodoro.mode === "focus" ? "active" : ""}" data-pomodoro-mode="focus">25 min focus</button>
             <button class="${pomodoro.mode === "break" ? "active" : ""}" data-pomodoro-mode="break">5 min break</button>
           </div>
         </div>
-        <div class="tool-card"><div class="tool-icon">PLAN</div><div class="tool-title">Study Timetable Generator</div><div class="tool-desc">Use subjects and remaining days to plan weekly revision.</div></div>
-        <div class="tool-card"><div class="tool-icon">Z</div><div class="tool-title">Z-score Guide</div><div class="tool-desc">Keep official Z-score and university entry links as resources.</div></div>
+        <div class="tool-card"><div class="tool-icon">🗓️</div><div class="tool-title">Study Timetable Generator</div><div class="tool-desc">Use subjects and remaining days to plan weekly revision.</div></div>
+        <div class="tool-card"><div class="tool-icon">📊</div><div class="tool-title">Z-score Guide</div><div class="tool-desc">Keep official Z-score and university entry links as resources.</div></div>
       </div>
     </section>`;
   }
@@ -353,8 +392,8 @@ import {
         </div>
       </div>
       <div class="rlist-action">
-        <button class="rlist-view-btn" data-paper="${esc(row.id)}">View Details</button>
-        <button class="rlist-dl-btn" data-open="${esc(row.id)}">Download PDF</button>
+        <button class="rlist-view-btn" data-paper="${esc(row.id)}">👁️ View Details</button>
+        <button class="rlist-dl-btn" data-open="${esc(row.id)}">⬇️ Download PDF</button>
       </div>
     </div>`).join("");
   }
@@ -370,7 +409,7 @@ import {
       <div class="subject-page-hero">
         <div class="breadcrumb" style="position:absolute;top:16px;left:32px;font-size:12px">${crumbs}</div>
         <div style="margin-top:20px;display:flex;align-items:center;gap:24px;width:100%">
-          <div class="subject-page-icon">${esc(title.slice(0, 2).toUpperCase())}</div>
+          <div class="subject-page-icon">${subjectEmoji(title)}</div>
           <div>
             <div class="section-label" style="margin-bottom:4px">${esc(subject?.stream || "A/L Resource Library")}</div>
             <div class="subject-page-title">${esc(title)}</div>

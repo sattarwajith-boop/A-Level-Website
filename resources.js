@@ -164,7 +164,7 @@ export function renderResourceCards(containerId, resources) {
   container.innerHTML = resources.map(r => {
     const downloadUrl = r.fileUrl || r.externalUrl || "#";
     const isExternal  = !!r.externalUrl && !r.fileUrl;
-    const fileLabel   = isExternal ? "Open Link" : `Download Download ${r.fileType || "PDF"}`;
+    const fileLabel   = isExternal ? "🔗 Open Link" : `⬇️ Download ${r.fileType || "PDF"}`;
 
     return `<div class="resource-card" data-id="${esc(r.id)}">
       <div class="resource-card-top">
@@ -187,7 +187,7 @@ export function renderResourceCards(containerId, resources) {
       </div>
       <div class="resource-card-bottom resource-card-actions">
         ${downloadUrl !== "#" ? `
-          <button class="resource-view-btn" onclick="handleView('${esc(r.id)}','${esc(downloadUrl)}')">View Online</button>
+          <button class="resource-view-btn" onclick="handleView('${esc(r.id)}','${esc(downloadUrl)}')">👁️ View Online</button>
           <button class="resource-dl-btn"   onclick="handleDownload('${esc(r.id)}','${esc(downloadUrl)}')">
             ${fileLabel}
           </button>

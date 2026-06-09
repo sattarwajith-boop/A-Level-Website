@@ -96,24 +96,24 @@ const SITE = {
   ],
 
   quickCards: [
-    { icon: `<svg width="20" height="20" fill="none" stroke="#e8a030" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>`, iconBg: "rgba(232,160,48,0.12)",  title: "Past Papers",      count: "By year & medium",   href: "#" },
-    { icon: `<svg width="20" height="20" fill="none" stroke="#4a90d9" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>`, iconBg: "rgba(74,144,217,0.12)", title: "Marking Schemes",  count: "Answer guides",      href: "#" },
-    { icon: `<svg width="20" height="20" fill="none" stroke="#3dab6a" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>`,  iconBg: "rgba(61,171,106,0.10)",  title: "Model Papers",     count: "Practice papers",     href: "#" },
-    { icon: `<svg width="20" height="20" fill="none" stroke="#8b6ee8" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`, iconBg: "rgba(139,110,232,0.12)", title: "Books & Syllabuses", count: "Official guides",  href: "#" },
-    { icon: `<svg width="20" height="20" fill="none" stroke="#2fbfaf" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,  iconBg: "rgba(47,191,175,0.10)",  title: "Short Notes",      count: "Fast revision",      href: "#" },
+    { icon: "📄", iconBg: "rgba(232,160,48,0.12)",  title: "Past Papers",      count: "By year & medium",   href: "#" },
+    { icon: "✅", iconBg: "rgba(74,144,217,0.12)", title: "Marking Schemes",  count: "Answer guides",      href: "#" },
+    { icon: "📝", iconBg: "rgba(61,171,106,0.10)",  title: "Model Papers",     count: "Practice papers",     href: "#" },
+    { icon: "📚", iconBg: "rgba(139,110,232,0.12)", title: "Books & Syllabuses", count: "Official guides",  href: "#" },
+    { icon: "⚡", iconBg: "rgba(47,191,175,0.10)",  title: "Short Notes",      count: "Fast revision",      href: "#" },
   ],
 
   streamTabs: ["Science", "Commerce", "Arts", "Technology", "Common"],
 
   subjects: [
-    { icon: "Chem", color: "rgba(232,160,48,0.12)",   name: "Chemistry",                   meta: "Tamil - Sinhala - English", href: "#" },
-    { icon: "Physics", color: "rgba(74,144,217,0.12)",    name: "Physics",                     meta: "Tamil - Sinhala - English", href: "#" },
-    { icon: "Bio", color: "rgba(61,171,106,0.10)",    name: "Biology",                     meta: "Tamil - Sinhala - English", href: "#" },
-    { icon: "Math", color: "rgba(139,110,232,0.12)",   name: "Combined Mathematics",        meta: "Tamil - Sinhala - English", href: "#" },
-    { icon: "Agri", color: "rgba(47,191,175,0.10)",    name: "Agricultural Science",        meta: "Sinhala - Tamil",           href: "#" },
-    { icon: "Science", color: "rgba(217,92,92,0.10)",     name: "Science for Technology",      meta: "Sinhala - English",          href: "#" },
-    { icon: "ICT", color: "rgba(232,160,48,0.12)",    name: "Information & Comm. Tech",    meta: "Sinhala - English",         href: "#" },
-    { icon: "Tech", color: "rgba(74,144,217,0.12)",    name: "Engineering Technology",      meta: "Sinhala - Tamil",           href: "#" },
+    { icon: "⚗️", color: "rgba(232,160,48,0.12)",   name: "Chemistry",                   meta: "Tamil - Sinhala - English", href: "#" },
+    { icon: "🔭", color: "rgba(74,144,217,0.12)",    name: "Physics",                     meta: "Tamil - Sinhala - English", href: "#" },
+    { icon: "🧬", color: "rgba(61,171,106,0.10)",    name: "Biology",                     meta: "Tamil - Sinhala - English", href: "#" },
+    { icon: "📐", color: "rgba(139,110,232,0.12)",   name: "Combined Mathematics",        meta: "Tamil - Sinhala - English", href: "#" },
+    { icon: "🌱", color: "rgba(47,191,175,0.10)",    name: "Agricultural Science",        meta: "Sinhala - Tamil",           href: "#" },
+    { icon: "🔬", color: "rgba(217,92,92,0.10)",     name: "Science for Technology",      meta: "Sinhala - English",          href: "#" },
+    { icon: "💻", color: "rgba(232,160,48,0.12)",    name: "Information & Comm. Tech",    meta: "Sinhala - English",         href: "#" },
+    { icon: "⚙️", color: "rgba(74,144,217,0.12)",    name: "Engineering Technology",      meta: "Sinhala - Tamil",           href: "#" },
   ],
 
   recentResources: [
@@ -134,9 +134,9 @@ const SITE = {
   },
 
   tools: [
-    { icon: "25", title: "Pomodoro Timer",             desc: "25-minute focus sessions with short breaks. Track your daily study hours." },
-    { icon: "List", title: "Study Timetable Generator",  desc: "Build a personalized weekly revision plan based on your exam date and subjects." },
-    { icon: "Chart", title: "Z-score Guide",               desc: "Understand how Z-scores work, cutoffs by stream, and university entry requirements." },
+    { icon: "⏱️", title: "Pomodoro Timer",             desc: "25-minute focus sessions with short breaks. Track your daily study hours." },
+    { icon: "🗓️", title: "Study Timetable Generator",  desc: "Build a personalized weekly revision plan based on your exam date and subjects." },
+    { icon: "📊", title: "Z-score Guide",               desc: "Understand how Z-scores work, cutoffs by stream, and university entry requirements." },
   ],
 
   blogs: [
