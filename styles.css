@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════
-   THE DARK ROOM — styles.css
+   A/L PAPER HUB — styles.css
    Theme: Light is DEFAULT. Dark available via toggle.
    All colours are controlled by CSS custom properties on
    [data-theme="light"] and [data-theme="dark"].
@@ -215,6 +215,12 @@ nav {
   flex-shrink: 0;
 }
 .nav-logo-icon svg { width: 18px; height: 18px; }
+.nav-logo-icon img,
+.footer-logo-icon img {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
 .nav-logo-text {
   font-family: var(--ff-display); font-size: 17px;
   font-weight: 600; color: var(--text0); line-height: 1;
@@ -550,6 +556,45 @@ nav {
 .tool-icon { font-size: 28px; margin-bottom: 12px; }
 .tool-title { font-size: 15px; font-weight: 600; color: var(--text0); margin-bottom: 6px; }
 .tool-desc { font-size: 13px; color: var(--text1); line-height: 1.6; }
+.pomodoro-card { cursor: default; }
+.pomodoro-time {
+  font-family: var(--ff-display);
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--blue);
+  line-height: 1;
+  margin: 12px 0 10px;
+}
+.pomodoro-actions,
+.pomodoro-modes {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.pomodoro-btn,
+.pomodoro-modes button {
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  color: var(--text1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: var(--ff-body);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pomodoro-btn.primary,
+.pomodoro-modes button.active {
+  background: linear-gradient(135deg, #2563eb, #38bdf8);
+  border-color: transparent;
+  color: #ffffff;
+}
+.pomodoro-btn:hover,
+.pomodoro-modes button:hover {
+  border-color: rgba(56,189,248,0.45);
+  color: var(--text0);
+}
 
 /* ── BLOG ────────────────────────────────────────────────── */
 .blog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
@@ -682,7 +727,7 @@ footer {
 .pagination .pg-dots  { color: var(--text2); font-size: 13px; background: none; border: none; cursor: default; }
 
 /* ════════════════════════════════════════════════════════════
-   VERSION 2 BRAND UPDATE — Dark Room blue + gold identity
+   VERSION 2 BRAND UPDATE — A/L Paper Hub blue + gold identity
    ════════════════════════════════════════════════════════════ */
 :root,
 [data-theme="light"] {

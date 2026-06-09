@@ -1,0 +1,9 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A/L Paper Hub">
+  <rect x="6" y="6" width="52" height="52" rx="16" fill="#0f172a"/>
+  <path d="M21 13h16l10 10v28H21V13Z" fill="#f8fafc"/>
+  <path d="M37 13v11h10" fill="#dbeafe"/>
+  <path d="M37 13v11h10" stroke="#2563eb" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M25 35h18M25 42h14" stroke="#38bdf8" stroke-width="3" stroke-linecap="round"/>
+  <path d="M17 19l2.2 4.4L24 25.6l-4.8 2.2L17 32l-2.2-4.2L10 25.6l4.8-2.2L17 19Z" fill="#f4c35a"/>
+  <text x="32" y="31" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="800" fill="#1d4ed8">A/L</text>
+</svg>

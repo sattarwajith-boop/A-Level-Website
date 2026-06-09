@@ -1,13 +1,13 @@
 /**
- * ═══════════════════════════════════════════════════════
- *  THE DARK ROOM — resources.js
+ * =======================================================
+ *  A/L PAPER HUB - resources.js
  *  Public website Firebase integration.
  *  Loads published resources, handles downloads, search,
  *  filters, and broken-link reporting.
  *
  *  Include AFTER firebase-config.js in your HTML:
  *    <script type="module" src="resources.js"></script>
- * ═══════════════════════════════════════════════════════
+ * =======================================================
  */
 
 import { firebaseConfig } from "./firebase-config.js";
@@ -31,11 +31,11 @@ import {
 const app = initializeApp(firebaseConfig, "public");
 const db  = getFirestore(app);
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    LOAD PUBLISHED RESOURCES
    Returns array of published resource objects from Firestore.
    Each object includes id + all fields.
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 export async function loadPublishedResources({ subject, type, year, medium, sort = "newest" } = {}) {
   try {
@@ -59,14 +59,14 @@ export async function loadPublishedResources({ subject, type, year, medium, sort
 
     return resources;
   } catch (err) {
-    console.error("[TDR] Failed to load resources:", err);
+    console.error("[APH] Failed to load resources:", err);
     return [];
   }
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    SEARCH RESOURCES (client-side, case-insensitive)
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 export function searchResources(resources, query) {
   if (!query) return resources;
@@ -80,10 +80,10 @@ export function searchResources(resources, query) {
   });
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    TRACK DOWNLOAD
    Call when user clicks a download/view button.
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 export async function trackDownload(resourceId) {
   try {
@@ -91,13 +91,13 @@ export async function trackDownload(resourceId) {
       downloadCount: increment(1)
     });
   } catch (_) {
-    // Non-fatal — download still proceeds
+    // Non-fatal - download still proceeds
   }
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    SUBMIT BROKEN LINK REPORT
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 export async function submitBrokenReport({ resourceId, resourceTitle, problemType, message = "" }) {
   try {
@@ -115,9 +115,9 @@ export async function submitBrokenReport({ resourceId, resourceTitle, problemTyp
   }
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    LOAD ACTIVE ANNOUNCEMENTS
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 export async function loadAnnouncements() {
   try {
@@ -132,10 +132,10 @@ export async function loadAnnouncements() {
   }
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    LOAD SITE SETTINGS
    Public pages can read non-sensitive site settings.
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 export async function loadSiteSettings() {
   try {
@@ -146,11 +146,11 @@ export async function loadSiteSettings() {
   }
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    RENDER RESOURCE CARD HTML
    Utility function to render a standard resource card.
    Pass a container element ID and an array of resources.
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 export function renderResourceCards(containerId, resources) {
   const container = document.getElementById(containerId);
@@ -164,7 +164,7 @@ export function renderResourceCards(containerId, resources) {
   container.innerHTML = resources.map(r => {
     const downloadUrl = r.fileUrl || r.externalUrl || "#";
     const isExternal  = !!r.externalUrl && !r.fileUrl;
-    const fileLabel   = isExternal ? "Open Link" : `↓ Download ${r.fileType || "PDF"}`;
+    const fileLabel   = isExternal ? "Open Link" : `Download Download ${r.fileType || "PDF"}`;
 
     return `<div class="resource-card" data-id="${esc(r.id)}">
       <div class="resource-card-top">
@@ -196,14 +196,14 @@ export function renderResourceCards(containerId, resources) {
       <div class="resource-report-link">
         <button onclick="openReportModal('${esc(r.id)}','${esc(r.title)}')"
           style="background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;text-decoration:underline;padding:0">
-          ⚠ Report broken link
+          ! Report broken link
         </button>
       </div>
     </div>`;
   }).join("");
 }
 
-/* ── Download handler ──────────────────────────────── */
+/* -- Download handler -------------------------------- */
 window.handleView = async function (resourceId, url) {
   window.open(url, "_blank");
   await trackDownload(resourceId);
@@ -220,7 +220,7 @@ window.handleDownload = async function (resourceId, url) {
   await trackDownload(resourceId);
 };
 
-/* ── Broken report modal ────────────────────────────── */
+/* -- Broken report modal ------------------------------ */
 window.openReportModal = function (resourceId, resourceTitle) {
   // Create a simple modal if it doesn't exist
   let modal = document.getElementById("tdr-report-modal");
@@ -248,7 +248,7 @@ window.openReportModal = function (resourceId, resourceTitle) {
         </div>
         <div style="margin-bottom:18px">
           <label style="display:block;font-size:12px;font-weight:600;color:var(--text2,#94a3b8);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Message (optional)</label>
-          <textarea id="report-message" rows="2" placeholder="Extra details…" style="width:100%;background:var(--bg1,#0b1528);border:1px solid rgba(148,163,184,0.15);border-radius:8px;color:var(--text0,#f8fafc);font-size:13px;padding:9px 12px;outline:none;resize:vertical"></textarea>
+          <textarea id="report-message" rows="2" placeholder="Extra details..." style="width:100%;background:var(--bg1,#0b1528);border:1px solid rgba(148,163,184,0.15);border-radius:8px;color:var(--text0,#f8fafc);font-size:13px;padding:9px 12px;outline:none;resize:vertical"></textarea>
         </div>
         <div id="report-feedback" style="display:none;font-size:13px;margin-bottom:12px;padding:8px 12px;border-radius:8px"></div>
         <div style="display:flex;gap:10px">
@@ -276,7 +276,7 @@ window.submitReport = async function () {
   const btn       = document.getElementById("report-submit-btn");
 
   btn.disabled    = true;
-  btn.textContent = "Submitting…";
+  btn.textContent = "Submitting...";
 
   const result = await submitBrokenReport({
     resourceId: resId, resourceTitle: resTitle, problemType: problem, message

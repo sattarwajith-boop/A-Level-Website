@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const KEYS = {
     resources: "tdr.resources",
     subjects: "tdr.subjects",
@@ -11,16 +11,19 @@
 
   const defaults = {
     settings: {
-      name: "The Dark Room",
+      name: "A/L Paper Hub",
       tagline: "Sri Lankan G.C.E. A/L papers, marking schemes, books, syllabuses and notes.",
-      email: "contact@thedarkroom.lk",
+      email: "contact@alpaperhub.lk",
       telegram: "",
       facebook: "",
       whatsapp: "",
-      seoTitle: "The Dark Room - Sri Lankan A/L Resources",
+      seoTitle: "A/L Paper Hub - Sri Lankan A/L Resources",
       seoDesc: "Free Sri Lankan A/L past papers, marking schemes, model papers, books, syllabuses and short notes.",
       notice: "Admin is now working locally. Add your real download links in Admin > Upload Resource.",
-      maintenance: "false"
+      maintenance: "false",
+      examTitle: "G.C.E. Advanced Level Examination",
+      examSubtitle: "Start revision today. Download subject papers by year, medium and type.",
+      examDate: "2026-11-10T00:00"
     },
     subjects: [
       { id: "chemistry", name: "Chemistry", stream: "Physical Science", desc: "Past papers, marking schemes, notes and syllabuses.", order: 1, status: "active" },
@@ -153,7 +156,7 @@
     })[char]);
   }
 
-  window.TDRStore = {
+  window.APHStore = {
     defaults,
     esc,
     read,

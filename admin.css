@@ -77,6 +77,11 @@ code { font-family: 'Courier New', monospace; }
   display: flex; align-items: center; gap: 14px;
   margin-bottom: 28px;
 }
+.loading-logo img,
+.login-logo img,
+.topbar-logo img {
+  display: block;
+}
 .login-title { font-size: 18px; font-weight: 700; }
 .login-subtitle { font-size: 12px; color: var(--admin-muted); margin-top: 2px; }
 

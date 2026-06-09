@@ -1,4 +1,4 @@
-# The Dark Room Admin Panel Setup
+# A/L Paper Hub Admin Panel Setup
 
 ## What is included
 
@@ -21,12 +21,12 @@ This version includes a full Firebase admin panel:
 
 ## Files
 
-- `admin/index.html` — admin panel page for `/admin/`
-- `admin.html` — redirects to `/admin/`
-- `admin.css` — admin panel styles
-- `admin.js` — full admin panel logic
-- `firebase-config.js` — Firebase project config and admin email allow-list
-- `resources.js` — public Firebase resource helper functions
+- `admin/index.html` - admin panel page for `/admin/`
+- `admin.html` - redirects to `/admin/`
+- `admin.css` - admin panel styles
+- `admin.js` - full admin panel logic
+- `firebase-config.js` - Firebase project config and admin email allow-list
+- `resources.js` - public Firebase resource helper functions
 
 ## Firebase setup
 

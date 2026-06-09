@@ -1,5 +1,5 @@
 (function () {
-  const store = window.TDRStore;
+  const store = window.APHStore;
   const esc = store.esc;
   let currentSection = "dashboard";
   let modalConfirmFn = null;
@@ -95,7 +95,7 @@
     const file = $("f-file") && $("f-file").files && $("f-file").files[0];
     const editId = value("f-edit-id");
     const existing = editId ? store.getResources().find((row) => row.id === editId) : {};
-    const externalUrl = value("f-externalurl");
+    const externalUrl = normalizeDriveDownloadUrl(value("f-externalurl"));
     return {
       ...existing,
       id: editId || undefined,
@@ -399,13 +399,16 @@
     setValue("set-whatsapp", s.whatsapp);
     setValue("set-seo-title", s.seoTitle);
     setValue("set-seo-desc", s.seoDesc);
+    setValue("set-exam-title", s.examTitle);
+    setValue("set-exam-subtitle", s.examSubtitle);
+    setValue("set-exam-date", toDateTimeLocalValue(s.examDate));
     setValue("set-notice", s.notice);
     setValue("set-maintenance", s.maintenance || "false");
   };
 
   window.saveSiteSettings = function () {
     store.saveSettings({
-      name: value("set-name") || "The Dark Room",
+      name: value("set-name") || "A/L Paper Hub",
       tagline: value("set-tagline"),
       email: value("set-email"),
       telegram: value("set-telegram"),
@@ -413,6 +416,9 @@
       whatsapp: value("set-whatsapp"),
       seoTitle: value("set-seo-title"),
       seoDesc: value("set-seo-desc"),
+      examTitle: value("set-exam-title"),
+      examSubtitle: value("set-exam-subtitle"),
+      examDate: value("set-exam-date"),
       notice: value("set-notice"),
       maintenance: value("set-maintenance")
     });
@@ -458,6 +464,31 @@
   function setText(id, value) {
     const el = $(id);
     if (el) el.textContent = value;
+  }
+
+  function normalizeDriveDownloadUrl(rawUrl) {
+    const url = (rawUrl || "").trim();
+    if (!url) return "";
+    const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
+    if (fileMatch) return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileMatch[1])}`;
+    try {
+      const parsed = new URL(url);
+      if (!/drive\.google\.com$/i.test(parsed.hostname)) return url;
+      const id = parsed.searchParams.get("id");
+      if (id) return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`;
+    } catch (_) {
+      return url;
+    }
+    return url;
+  }
+
+  function toDateTimeLocalValue(value) {
+    if (!value) return "";
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return value;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const offset = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - offset).toISOString().slice(0, 16);
   }
 
   window.addEventListener("tdr-store-change", () => {

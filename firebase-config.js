@@ -1,18 +1,18 @@
 /**
- * ═══════════════════════════════════════════════════════
- *  THE DARK ROOM — firebase-config.js
+ * =======================================================
+ *  A/L PAPER HUB - firebase-config.js
  *  SETUP INSTRUCTIONS:
  *  1. Go to https://console.firebase.google.com
- *  2. Create a new project (e.g. "the-dark-room")
- *  3. Enable Authentication → Email/Password
+ *  2. Create a new project (e.g. "al-paper-hub")
+ *  3. Enable Authentication -> Email/Password
  *  4. Create an admin user manually in Authentication
  *  5. Enable Firestore Database (production mode)
  *  6. Enable Firebase Storage
- *  7. Go to Project Settings → Your Apps → Add Web App
+ *  7. Go to Project Settings -> Your Apps -> Add Web App
  *  8. Copy the firebaseConfig object below and replace
  *  9. Create your admin user in Firebase Authentication
  *  10. Deploy Firestore + Storage security rules (see admin panel)
- * ═══════════════════════════════════════════════════════
+ * =======================================================
  */
 
 export const firebaseConfig = {

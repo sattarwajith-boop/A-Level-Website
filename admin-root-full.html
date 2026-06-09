@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Admin — The Dark Room</title>
+<title>Admin - A/L Paper Hub</title>
 <meta name="robots" content="noindex, nofollow" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,38 +13,26 @@
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════
+<!-- ===================================================
   AUTH LOADING SCREEN
-═══════════════════════════════════════════════════ -->
+=================================================== -->
 <div id="auth-loading">
   <div class="loading-logo">
-    <svg viewBox="0 0 64 64" width="48" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="6" y="8" width="52" height="48" rx="15" fill="#07111f"/>
-      <circle cx="46" cy="18" r="7" fill="#f4c35a"/>
-      <path d="M18 39h28" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-      <path d="M20 24h24v24H20z" stroke="#2563eb" stroke-width="4" stroke-linejoin="round"/>
-      <text x="32" y="37" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="800" fill="#f8fafc">TDR</text>
-    </svg>
+    <img src="assets/logo.svg" alt="" width="48" height="48" />
   </div>
   <div class="loading-spinner"></div>
-  <p>Checking authentication…</p>
+  <p>Checking authentication...</p>
 </div>
 
-<!-- ═══════════════════════════════════════════════════
+<!-- ===================================================
   LOGIN PAGE
-═══════════════════════════════════════════════════ -->
+=================================================== -->
 <div id="login-page" class="hidden">
   <div class="login-card">
     <div class="login-logo">
-      <svg viewBox="0 0 64 64" width="44" height="44" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="6" y="8" width="52" height="48" rx="15" fill="#07111f"/>
-        <circle cx="46" cy="18" r="7" fill="#f4c35a"/>
-        <path d="M18 39h28" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-        <path d="M20 24h24v24H20z" stroke="#2563eb" stroke-width="4" stroke-linejoin="round"/>
-        <text x="32" y="37" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="800" fill="#f8fafc">TDR</text>
-      </svg>
+      <img src="assets/logo.svg" alt="" width="44" height="44" />
       <div>
-        <div class="login-title">The Dark Room</div>
+        <div class="login-title">A/L Paper Hub</div>
         <div class="login-subtitle">Admin Panel</div>
       </div>
     </div>
@@ -55,7 +43,7 @@
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="login-password" placeholder="••••••••••" autocomplete="current-password" />
+        <input type="password" id="login-password" placeholder="**********" autocomplete="current-password" />
       </div>
       <div id="login-error" class="error-msg hidden"></div>
       <button id="login-btn" class="btn-primary btn-full" onclick="loginAdmin()">
@@ -67,9 +55,9 @@
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════
+<!-- ===================================================
   MAIN ADMIN PANEL
-═══════════════════════════════════════════════════ -->
+=================================================== -->
 <div id="admin-panel" class="hidden">
 
   <!-- TOP BAR -->
@@ -81,13 +69,7 @@
         </svg>
       </button>
       <div class="topbar-logo">
-        <svg viewBox="0 0 64 64" width="28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="6" y="8" width="52" height="48" rx="15" fill="#07111f"/>
-          <circle cx="46" cy="18" r="7" fill="#f4c35a"/>
-          <path d="M18 39h28" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-          <path d="M20 24h24v24H20z" stroke="#2563eb" stroke-width="4" stroke-linejoin="round"/>
-          <text x="32" y="37" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="800" fill="#f8fafc">TDR</text>
-        </svg>
+        <img src="assets/logo.svg" alt="" width="28" height="28" />
         <span>Admin Panel</span>
       </div>
     </div>
@@ -149,7 +131,7 @@
     <!-- MAIN CONTENT -->
     <main class="admin-main" id="admin-main">
 
-      <!-- ── DASHBOARD ── -->
+      <!-- -- DASHBOARD -- -->
       <section id="section-dashboard" class="section-content">
         <div class="section-header">
           <h1>Dashboard</h1>
@@ -159,26 +141,26 @@
         </div>
 
         <div class="stats-grid" id="stats-grid">
-          <div class="stat-card"><div class="stat-num" id="stat-total">—</div><div class="stat-lbl">Total Resources</div></div>
-          <div class="stat-card"><div class="stat-num stat-blue" id="stat-published">—</div><div class="stat-lbl">Published</div></div>
-          <div class="stat-card"><div class="stat-num stat-amber" id="stat-drafts">—</div><div class="stat-lbl">Drafts</div></div>
-          <div class="stat-card"><div class="stat-num stat-cyan" id="stat-papers">—</div><div class="stat-lbl">Past Papers</div></div>
-          <div class="stat-card"><div class="stat-num stat-green" id="stat-books">—</div><div class="stat-lbl">Books</div></div>
-          <div class="stat-card"><div class="stat-num stat-danger" id="stat-reports">—</div><div class="stat-lbl">Open Reports</div></div>
+          <div class="stat-card"><div class="stat-num" id="stat-total">-</div><div class="stat-lbl">Total Resources</div></div>
+          <div class="stat-card"><div class="stat-num stat-blue" id="stat-published">-</div><div class="stat-lbl">Published</div></div>
+          <div class="stat-card"><div class="stat-num stat-amber" id="stat-drafts">-</div><div class="stat-lbl">Drafts</div></div>
+          <div class="stat-card"><div class="stat-num stat-cyan" id="stat-papers">-</div><div class="stat-lbl">Past Papers</div></div>
+          <div class="stat-card"><div class="stat-num stat-green" id="stat-books">-</div><div class="stat-lbl">Books</div></div>
+          <div class="stat-card"><div class="stat-num stat-danger" id="stat-reports">-</div><div class="stat-lbl">Open Reports</div></div>
         </div>
 
         <div class="dashboard-quick-actions">
           <button class="qa-btn" onclick="showSection('upload')">
-            <span>📤</span> Upload Resource
+            <span>Upload</span> Upload Resource
           </button>
           <button class="qa-btn" onclick="showSection('announcements')">
-            <span>📢</span> Add Announcement
+            <span>Notice</span> Add Announcement
           </button>
           <button class="qa-btn" onclick="showSection('reports')">
-            <span>🔗</span> View Reports
+            <span>Link</span> View Reports
           </button>
           <button class="qa-btn" onclick="showSection('subjects')">
-            <span>📚</span> Manage Subjects
+            <span>Book</span> Manage Subjects
           </button>
         </div>
 
@@ -187,16 +169,16 @@
             <h3>Recently Uploaded</h3>
           </div>
           <div id="dashboard-recent-list">
-            <div class="empty-state">Loading…</div>
+            <div class="empty-state">Loading...</div>
           </div>
         </div>
       </section>
 
-      <!-- ── UPLOAD RESOURCE ── -->
+      <!-- -- UPLOAD RESOURCE -- -->
       <section id="section-upload" class="section-content hidden">
         <div class="section-header">
           <h1 id="upload-section-title">Upload Resource</h1>
-          <button class="btn-ghost" onclick="cancelEdit()">← Back to Resources</button>
+          <button class="btn-ghost" onclick="cancelEdit()"><- Back to Resources</button>
         </div>
 
         <div class="card">
@@ -211,7 +193,7 @@
               <div class="form-group">
                 <label>Subject <span class="req">*</span></label>
                 <select id="f-subject">
-                  <option value="">— Select Subject —</option>
+                  <option value="">- Select Subject -</option>
                   <option>Combined Maths</option><option>Physics</option><option>Chemistry</option>
                   <option>Biology</option><option>ICT</option><option>General English</option>
                   <option>General Knowledge</option><option>Accounting</option><option>Business Studies</option>
@@ -226,7 +208,7 @@
               <div class="form-group">
                 <label>Stream <span class="req">*</span></label>
                 <select id="f-stream">
-                  <option value="">— Select Stream —</option>
+                  <option value="">- Select Stream -</option>
                   <option>Physical Science</option><option>Bio Science</option><option>Commerce</option>
                   <option>Arts</option><option>Technology</option><option>Common Resources</option>
                 </select>
@@ -235,7 +217,7 @@
               <div class="form-group">
                 <label>Resource Type <span class="req">*</span></label>
                 <select id="f-type">
-                  <option value="">— Select Type —</option>
+                  <option value="">- Select Type -</option>
                   <option>Past Paper</option><option>Marking Scheme</option><option>Model Paper</option>
                   <option>Term Test Paper</option><option>School Paper</option><option>Province Paper</option>
                   <option>Book</option><option>Short Note</option><option>Syllabus</option>
@@ -247,7 +229,7 @@
               <div class="form-group">
                 <label>Medium <span class="req">*</span></label>
                 <select id="f-medium">
-                  <option value="">— Select Medium —</option>
+                  <option value="">- Select Medium -</option>
                   <option>Tamil</option><option>Sinhala</option><option>English</option><option>Bilingual</option>
                 </select>
               </div>
@@ -255,7 +237,7 @@
               <div class="form-group">
                 <label>Year</label>
                 <select id="f-year">
-                  <option value="">— Select Year —</option>
+                  <option value="">- Select Year -</option>
                   <option>2024</option><option>2023</option><option>2022</option><option>2021</option>
                   <option>2020</option><option>2019</option><option>2018</option><option>2017</option>
                   <option>2016</option><option>2015</option><option>2014</option><option>2013</option>
@@ -266,7 +248,7 @@
               <div class="form-group">
                 <label>Exam Type</label>
                 <select id="f-examtype">
-                  <option value="">— Select Exam Type —</option>
+                  <option value="">- Select Exam Type -</option>
                   <option>GCE A/L</option><option>School Term Test</option><option>Province Test</option>
                   <option>Zonal Test</option><option>Private Institute Paper</option>
                   <option>Teacher Model Paper</option><option>Other</option>
@@ -276,7 +258,7 @@
               <div class="form-group">
                 <label>Paper Part</label>
                 <select id="f-paperpart">
-                  <option value="">— Select Part —</option>
+                  <option value="">- Select Part -</option>
                   <option>Full Paper</option><option>Part I</option><option>Part II</option>
                   <option>Essay</option><option>MCQ</option><option>Structured Essay</option>
                   <option>Marking Scheme</option><option>Practical</option><option>Other</option>
@@ -286,7 +268,7 @@
 
             <div class="form-group" style="margin-top:8px">
               <label>Description</label>
-              <textarea id="f-description" rows="3" placeholder="Short description about this resource…"></textarea>
+              <textarea id="f-description" rows="3" placeholder="Short description about this resource..."></textarea>
             </div>
 
             <div class="form-grid-2">
@@ -300,9 +282,14 @@
               </div>
             </div>
 
-            <!-- FILE UPLOAD -->
             <div class="form-group" style="margin-top:8px">
-              <label>Upload File <span class="hint">(PDF, DOCX, Image, ZIP — max 100MB)</span></label>
+              <label>Google Drive PDF Link <span class="hint">(paste the normal shared Drive link; it will be corrected)</span></label>
+              <input type="url" id="f-externalurl" placeholder="https://drive.google.com/file/d/FILE_ID/view" />
+            </div>
+
+            <!-- OPTIONAL FILE UPLOAD -->
+            <div class="form-group">
+              <label>Optional File Upload <span class="hint">(PDF, DOCX, Image, ZIP - max 100MB)</span></label>
               <div class="file-drop-zone" id="file-drop-zone">
                 <input type="file" id="f-file" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.webp,.zip" onchange="handleFileSelect(this)" />
                 <div class="file-drop-inner">
@@ -313,32 +300,27 @@
               </div>
             </div>
 
-            <div class="form-group">
-              <label>External Download URL <span class="hint">(optional — use instead of or alongside file)</span></label>
-              <input type="url" id="f-externalurl" placeholder="https://drive.google.com/…" />
-            </div>
-
             <!-- UPLOAD PROGRESS -->
             <div id="upload-progress-wrap" class="hidden">
               <div class="progress-bar-bg">
                 <div class="progress-bar-fill" id="upload-progress-bar"></div>
               </div>
-              <div class="progress-label" id="upload-progress-label">Uploading… 0%</div>
+              <div class="progress-label" id="upload-progress-label">Uploading... 0%</div>
             </div>
 
             <div class="form-grid-2" style="margin-top:8px">
               <div class="form-group">
                 <label>Visibility</label>
                 <select id="f-status">
-                  <option value="published">Published — visible to students</option>
-                  <option value="draft">Draft — hidden from public</option>
+                  <option value="published">Published - visible to students</option>
+                  <option value="draft">Draft - hidden from public</option>
                 </select>
               </div>
               <div class="form-group">
                 <label>Featured</label>
                 <select id="f-featured">
                   <option value="false">No</option>
-                  <option value="true">Yes — show in featured section</option>
+                  <option value="true">Yes - show in featured section</option>
                 </select>
               </div>
             </div>
@@ -362,7 +344,7 @@
         </div>
       </section>
 
-      <!-- ── MANAGE RESOURCES ── -->
+      <!-- -- MANAGE RESOURCES -- -->
       <section id="section-resources" class="section-content hidden">
         <div class="section-header">
           <h1>Manage Resources</h1>
@@ -371,7 +353,7 @@
 
         <div class="card">
           <div class="filter-row">
-            <input type="text" id="res-search" placeholder="Search by title…" oninput="filterResources()" />
+            <input type="text" id="res-search" placeholder="Search by title..." oninput="filterResources()" />
             <select id="res-filter-subject" onchange="filterResources()">
               <option value="">All Subjects</option>
               <option>Combined Maths</option><option>Physics</option><option>Chemistry</option>
@@ -391,31 +373,31 @@
             <select id="res-filter-sort" onchange="filterResources()">
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
-              <option value="title">A–Z Title</option>
+              <option value="title">A-Z Title</option>
             </select>
           </div>
 
           <div id="resources-table-wrap">
-            <div class="empty-state">Loading resources…</div>
+            <div class="empty-state">Loading resources...</div>
           </div>
 
           <div class="pagination-wrap" id="res-pagination"></div>
         </div>
       </section>
 
-      <!-- ── BROKEN REPORTS ── -->
+      <!-- -- BROKEN REPORTS -- -->
       <section id="section-reports" class="section-content hidden">
         <div class="section-header">
           <h1>Broken Link Reports</h1>
         </div>
         <div class="card">
           <div id="reports-list">
-            <div class="empty-state">Loading reports…</div>
+            <div class="empty-state">Loading reports...</div>
           </div>
         </div>
       </section>
 
-      <!-- ── ANNOUNCEMENTS ── -->
+      <!-- -- ANNOUNCEMENTS -- -->
       <section id="section-announcements" class="section-content hidden">
         <div class="section-header">
           <h1>Announcements</h1>
@@ -430,7 +412,7 @@
           </div>
           <div class="form-group">
             <label>Message</label>
-            <textarea id="ann-message" rows="3" placeholder="Additional details…"></textarea>
+            <textarea id="ann-message" rows="3" placeholder="Additional details..."></textarea>
           </div>
           <div class="form-grid-2">
             <div class="form-group">
@@ -458,12 +440,12 @@
 
         <div class="card">
           <div id="announcements-list">
-            <div class="empty-state">Loading…</div>
+            <div class="empty-state">Loading...</div>
           </div>
         </div>
       </section>
 
-      <!-- ── SUBJECTS ── -->
+      <!-- -- SUBJECTS -- -->
       <section id="section-subjects" class="section-content hidden">
         <div class="section-header">
           <h1>Manage Subjects</h1>
@@ -480,7 +462,7 @@
             <div class="form-group">
               <label>Stream</label>
               <select id="subj-stream">
-                <option value="">— Select Stream —</option>
+                <option value="">- Select Stream -</option>
                 <option>Physical Science</option><option>Bio Science</option><option>Commerce</option>
                 <option>Arts</option><option>Technology</option><option>Common Resources</option>
               </select>
@@ -499,7 +481,7 @@
           </div>
           <div class="form-group">
             <label>Description</label>
-            <input type="text" id="subj-desc" placeholder="Short subject description…" />
+            <input type="text" id="subj-desc" placeholder="Short subject description..." />
           </div>
           <input type="hidden" id="subj-edit-id" value="" />
           <div class="form-actions">
@@ -510,12 +492,12 @@
 
         <div class="card">
           <div id="subjects-list">
-            <div class="empty-state">Loading…</div>
+            <div class="empty-state">Loading...</div>
           </div>
         </div>
       </section>
 
-      <!-- ── SITE SETTINGS ── -->
+      <!-- -- SITE SETTINGS -- -->
       <section id="section-settings" class="section-content hidden">
         <div class="section-header">
           <h1>Site Settings</h1>
@@ -524,7 +506,7 @@
           <div class="form-grid-2">
             <div class="form-group">
               <label>Website Name</label>
-              <input type="text" id="set-name" placeholder="The Dark Room" />
+              <input type="text" id="set-name" placeholder="A/L Paper Hub" />
             </div>
             <div class="form-group">
               <label>Tagline</label>
@@ -536,24 +518,36 @@
             </div>
             <div class="form-group">
               <label>Telegram Channel Link</label>
-              <input type="url" id="set-telegram" placeholder="https://t.me/…" />
+              <input type="url" id="set-telegram" placeholder="https://t.me/..." />
             </div>
             <div class="form-group">
               <label>Facebook Page Link</label>
-              <input type="url" id="set-facebook" placeholder="https://facebook.com/…" />
+              <input type="url" id="set-facebook" placeholder="https://facebook.com/..." />
             </div>
             <div class="form-group">
               <label>WhatsApp Group Link</label>
-              <input type="url" id="set-whatsapp" placeholder="https://chat.whatsapp.com/…" />
+              <input type="url" id="set-whatsapp" placeholder="https://chat.whatsapp.com/..." />
             </div>
             <div class="form-group">
               <label>SEO Title</label>
-              <input type="text" id="set-seo-title" placeholder="The Dark Room — Sri Lankan A/L Resources" />
+              <input type="text" id="set-seo-title" placeholder="A/L Paper Hub - Sri Lankan A/L Resources" />
             </div>
             <div class="form-group">
               <label>SEO Description</label>
-              <input type="text" id="set-seo-desc" placeholder="Free A/L past papers, marking schemes…" />
+              <input type="text" id="set-seo-desc" placeholder="Free A/L past papers, marking schemes..." />
             </div>
+            <div class="form-group">
+              <label>Exam Countdown Title</label>
+              <input type="text" id="set-exam-title" placeholder="G.C.E. Advanced Level Examination" />
+            </div>
+            <div class="form-group">
+              <label>Exam Date & Time</label>
+              <input type="datetime-local" id="set-exam-date" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Exam Countdown Subtitle</label>
+            <input type="text" id="set-exam-subtitle" placeholder="Start revision today. Download subject papers by year, medium and type." />
           </div>
           <div class="form-group">
             <label>Homepage Notice <span class="hint">(shown as banner, leave blank to hide)</span></label>
@@ -562,8 +556,8 @@
           <div class="form-group">
             <label>Maintenance Mode</label>
             <select id="set-maintenance">
-              <option value="false">Off — site is live</option>
-              <option value="true">On — show maintenance page</option>
+              <option value="false">Off - site is live</option>
+              <option value="true">On - show maintenance page</option>
             </select>
           </div>
           <div class="form-actions">
@@ -573,7 +567,7 @@
         </div>
       </section>
 
-      <!-- ── SECURITY RULES ── -->
+      <!-- -- SECURITY RULES -- -->
       <section id="section-security-rules" class="section-content hidden">
         <div class="section-header">
           <h1>Firebase Security Rules</h1>
@@ -646,8 +640,8 @@ service firebase.storage {
             <strong style="color:var(--admin-cyan)">Setup Steps</strong>
             <ol style="color:var(--admin-muted);margin-top:10px;padding-left:20px;line-height:2">
               <li>Open <a href="https://console.firebase.google.com" target="_blank" style="color:var(--admin-cyan)">Firebase Console</a></li>
-              <li>Go to Firestore → Rules → paste Firestore rules above</li>
-              <li>Go to Storage → Rules → paste Storage rules above</li>
+              <li>Go to Firestore -> Rules -> paste Firestore rules above</li>
+              <li>Go to Storage -> Rules -> paste Storage rules above</li>
               <li>Publish both rule sets</li>
               <li>Create your admin user in Firebase Authentication</li>
               <li>Keep public sign-up pages disabled so only manually created Firebase users can enter admin</li>
@@ -660,9 +654,9 @@ service firebase.storage {
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════
+<!-- ===================================================
   CONFIRM MODAL
-═══════════════════════════════════════════════════ -->
+=================================================== -->
 <div id="confirm-modal" class="modal-overlay hidden">
   <div class="modal-card">
     <h3 id="modal-title">Confirm Action</h3>
@@ -674,9 +668,9 @@ service firebase.storage {
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════
+<!-- ===================================================
   TOAST NOTIFICATIONS
-═══════════════════════════════════════════════════ -->
+=================================================== -->
 <div id="toast-container"></div>
 
 <!-- SIDEBAR OVERLAY (mobile) -->

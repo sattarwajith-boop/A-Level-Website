@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════
- *  THE DARK ROOM — theme.js
+ *  A/L PAPER HUB — theme.js
  *  Handles light / dark mode toggle.
  *  Default theme: LIGHT
  *  Persists choice to localStorage so it survives refreshes.
@@ -69,7 +69,8 @@
     attachListeners();
   }
 
-  window.TDRTheme = { init: init, apply: applyTheme };
+  window.APHTheme = { init: init, apply: applyTheme };
+  window.TDRTheme = window.APHTheme;
 
   /* Run after DOM is ready */
   if (document.readyState === "loading") {

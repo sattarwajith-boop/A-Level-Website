@@ -1,9 +1,9 @@
 /**
- * ═══════════════════════════════════════════════════════
- *  THE DARK ROOM — admin.js
+ * =======================================================
+ *  A/L PAPER HUB - admin.js
  *  Complete Firebase-powered admin panel logic.
  *  Uses Firebase v10 modular SDK.
- * ═══════════════════════════════════════════════════════
+ * =======================================================
  */
 
 import { firebaseConfig, ADMIN_EMAILS } from "./firebase-config.js";
@@ -22,6 +22,7 @@ import {
   getDocs,
   getDoc,
   doc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -39,26 +40,26 @@ import {
   deleteObject
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    INITIALISE FIREBASE
-═══════════════════════════════════════════════════════ */
+======================================================= */
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 const storage = getStorage(app);
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    GLOBAL STATE
-═══════════════════════════════════════════════════════ */
+======================================================= */
 let allResources   = [];
 let currentPage    = 1;
 const PAGE_SIZE    = 20;
 let modalConfirmFn = null;
 let isEditing      = false;
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    AUTH
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 /**
  * Monitor authentication state on page load.
@@ -71,7 +72,7 @@ onAuthStateChanged(auth, (user) => {
 
   if (user) {
     if (!ADMIN_EMAILS.includes(user.email)) {
-      // Signed in but not in allowlist — boot them out
+      // Signed in but not in allowlist - boot them out
       signOut(auth);
       loading.classList.add("hidden");
       login.classList.remove("hidden");
@@ -149,9 +150,9 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    INIT ADMIN PANEL
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 function initAdminPanel() {
   showSection("dashboard");
@@ -159,9 +160,9 @@ function initAdminPanel() {
   loadRecentResources();
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    NAVIGATION
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 window.showSection = function (name) {
   // Hide all sections
@@ -207,9 +208,9 @@ function closeSidebar() {
   document.getElementById("sidebar-overlay").classList.add("hidden");
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    DASHBOARD
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 async function loadDashboardStats() {
   try {
@@ -259,7 +260,7 @@ async function loadRecentResources() {
         <div class="recent-item-icon">${icon}</div>
         <div class="recent-item-info">
           <div class="recent-item-title">${esc(r.title)}</div>
-          <div class="recent-item-meta">${esc(r.subject || "—")} · ${esc(r.type || "—")} · <span class="${r.status === "published" ? "status-published" : "status-draft"} status-badge">${r.status}</span></div>
+          <div class="recent-item-meta">${esc(r.subject || "-")} - ${esc(r.type || "-")} - <span class="${r.status === "published" ? "status-published" : "status-draft"} status-badge">${r.status}</span></div>
         </div>
         <button class="btn-icon btn-sm" onclick="editResource('${d.id}')">Edit</button>
       </div>`;
@@ -270,9 +271,9 @@ async function loadRecentResources() {
   }
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    UPLOAD / EDIT RESOURCE
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 /** Called when a file is picked from the file input */
 window.handleFileSelect = function (input) {
@@ -282,7 +283,7 @@ window.handleFileSelect = function (input) {
   document.getElementById("file-drop-hint").textContent = formatFileSize(file.size);
 };
 
-/** Main submit handler — handles both create and edit */
+/** Main submit handler - handles both create and edit */
 window.handleSubmitResource = async function () {
   const editId = document.getElementById("f-edit-id").value;
   if (editId) {
@@ -297,7 +298,7 @@ async function createResource() {
   if (!data) return;
 
   const file = document.getElementById("f-file").files[0];
-  const externalUrl = document.getElementById("f-externalurl").value.trim();
+  const externalUrl = normalizeDriveDownloadUrl(document.getElementById("f-externalurl").value.trim());
 
   if (!file && !externalUrl) {
     showUploadError("Please upload a file or provide an external download URL.");
@@ -338,7 +339,7 @@ async function createResource() {
 
     await addDoc(collection(db, "resources"), docData);
 
-    showUploadSuccess("✓ Resource uploaded and saved successfully!");
+    showUploadSuccess("OK Resource uploaded and saved successfully!");
     resetUploadForm();
     showToast("Resource uploaded!", "success");
     loadDashboardStats();
@@ -354,7 +355,7 @@ async function updateResource(docId) {
   if (!data) return;
 
   const file         = document.getElementById("f-file").files[0];
-  const externalUrl  = document.getElementById("f-externalurl").value.trim();
+  const externalUrl  = normalizeDriveDownloadUrl(document.getElementById("f-externalurl").value.trim());
   const oldPath      = document.getElementById("f-edit-storagepath").value;
 
   setUploadLoading(true);
@@ -386,7 +387,7 @@ async function updateResource(docId) {
 
     await updateDoc(doc(db, "resources", docId), updates);
 
-    showUploadSuccess("✓ Resource updated successfully!");
+    showUploadSuccess("OK Resource updated successfully!");
     showToast("Resource updated!", "success");
     setUploadLoading(false);
     loadResources();
@@ -413,7 +414,7 @@ async function uploadFileToStorage(file, stream, subject) {
       (snap) => {
         const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
         document.getElementById("upload-progress-bar").style.width   = pct + "%";
-        document.getElementById("upload-progress-label").textContent = `Uploading… ${pct}%`;
+        document.getElementById("upload-progress-label").textContent = `Uploading... ${pct}%`;
       },
       (err) => { reject(err); },
       async () => {
@@ -454,7 +455,7 @@ function collectFormData() {
   return { title, subject, stream, type, medium, year, examType, paperPart, description, source, tags, status, featured };
 }
 
-/** Edit an existing resource — prefill form */
+/** Edit an existing resource - prefill form */
 window.editResource = async function (docId) {
   isEditing = true;
   showSection("upload");
@@ -516,6 +517,22 @@ function resetUploadForm() {
   isEditing = false;
 }
 
+function normalizeDriveDownloadUrl(rawUrl) {
+  const url = (rawUrl || "").trim();
+  if (!url) return "";
+  const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
+  if (fileMatch) return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileMatch[1])}`;
+  try {
+    const parsed = new URL(url);
+    if (!/drive\.google\.com$/i.test(parsed.hostname)) return url;
+    const id = parsed.searchParams.get("id");
+    if (id) return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`;
+  } catch (_) {
+    return url;
+  }
+  return url;
+}
+
 function setUploadLoading(on) {
   const btn  = document.getElementById("upload-submit-btn");
   const text = document.getElementById("upload-btn-text");
@@ -540,13 +557,13 @@ function clearUploadMessages() {
   document.getElementById("upload-success").classList.add("hidden");
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    MANAGE RESOURCES TABLE
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 async function loadResources() {
   const wrap = document.getElementById("resources-table-wrap");
-  wrap.innerHTML = `<div class="empty-state">Loading resources…</div>`;
+  wrap.innerHTML = `<div class="empty-state">Loading resources...</div>`;
   try {
     const snap = await getDocs(query(collection(db, "resources"), orderBy("createdAt", "desc")));
     allResources = [];
@@ -602,23 +619,24 @@ function renderResourcesTable(rows) {
     const statusBadge = r.status === "published"
       ? `<span class="status-badge status-published">Published</span>`
       : `<span class="status-badge status-draft">Draft</span>`;
+    const savedUrl = r.fileUrl || r.externalUrl || "";
 
     html += `<tr>
       <td class="rt-title">
         <span class="rt-title-text" title="${esc(r.title)}">${esc(r.title)}</span>
-        ${r.featured ? `<span class="type-badge" style="margin-top:4px;display:inline-block">★ Featured</span>` : ""}
+        ${r.featured ? `<span class="type-badge" style="margin-top:4px;display:inline-block">* Featured</span>` : ""}
       </td>
-      <td class="rt-subject">${esc(r.subject||"—")}</td>
-      <td><span class="type-badge">${esc(r.type||"—")}</span></td>
-      <td>${esc(r.year||"—")}</td>
-      <td>${esc(r.medium||"—")}</td>
+      <td class="rt-subject">${esc(r.subject||"-")}</td>
+      <td><span class="type-badge">${esc(r.type||"-")}</span></td>
+      <td>${esc(r.year||"-")}</td>
+      <td>${esc(r.medium||"-")}</td>
       <td>${statusBadge}</td>
       <td>
         <div class="rt-actions">
-          <button class="btn-icon btn-sm" onclick="editResource('${r.id}')">✏️ Edit</button>
-          ${r.fileUrl ? `<button class="btn-icon btn-sm" onclick="copyUrl('${r.fileUrl}')">🔗 URL</button>` : ""}
-          <button class="btn-icon btn-sm" onclick="togglePublish('${r.id}','${r.status}')">${r.status==="published"?"📤 Unpublish":"📥 Publish"}</button>
-          <button class="btn-icon btn-sm danger" onclick="confirmDeleteResource('${r.id}','${esc(r.title)}','${r.storagePath||""}')">🗑️</button>
+          <button class="btn-icon btn-sm" onclick="editResource('${r.id}')">Edit</button>
+          ${savedUrl ? `<button class="btn-icon btn-sm" onclick="copyUrl('${esc(savedUrl)}')">URL</button>` : ""}
+          <button class="btn-icon btn-sm" onclick="togglePublish('${r.id}','${r.status}')">${r.status==="published"?"Unpublish":"Publish"}</button>
+          <button class="btn-icon btn-sm danger" onclick="confirmDeleteResource('${r.id}','${esc(r.title)}','${r.storagePath||""}')">Delete</button>
         </div>
       </td>
     </tr>`;
@@ -687,13 +705,13 @@ async function deleteResource(docId, storagePath) {
   }
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    BROKEN REPORTS
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 async function loadBrokenReports() {
   const el = document.getElementById("reports-list");
-  el.innerHTML = `<div class="empty-state">Loading…</div>`;
+  el.innerHTML = `<div class="empty-state">Loading...</div>`;
   try {
     const snap = await getDocs(query(collection(db, "brokenReports"), orderBy("createdAt", "desc")));
     if (snap.empty) { el.innerHTML = `<div class="empty-state">No reports submitted yet.</div>`; return; }
@@ -704,16 +722,16 @@ async function loadBrokenReports() {
       const statusBadge = r.status === "open"
         ? `<span class="report-status-open">Open</span>`
         : `<span class="report-status-fixed">Fixed</span>`;
-      const date = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString() : "—";
+      const date = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString() : "-";
       html += `<div class="report-item">
         <div class="report-item-header">
           <div>
             <div class="report-item-title">${esc(r.resourceTitle || "Unknown resource")} ${statusBadge}</div>
-            <div class="report-item-meta">Problem: ${esc(r.problemType||"—")} · ${date}${r.message ? " · " + esc(r.message) : ""}</div>
+            <div class="report-item-meta">Problem: ${esc(r.problemType||"-")} - ${date}${r.message ? " - " + esc(r.message) : ""}</div>
           </div>
           <div class="report-item-actions">
-            ${r.status === "open" ? `<button class="btn-icon btn-sm" onclick="markReportFixed('${d.id}')">✓ Mark Fixed</button>` : ""}
-            <button class="btn-icon btn-sm danger" onclick="deleteReport('${d.id}')">🗑️</button>
+            ${r.status === "open" ? `<button class="btn-icon btn-sm" onclick="markReportFixed('${d.id}')">OK Mark Fixed</button>` : ""}
+            <button class="btn-icon btn-sm danger" onclick="deleteReport('${d.id}')">Delete</button>
           </div>
         </div>
       </div>`;
@@ -749,13 +767,13 @@ window.deleteReport = function (docId) {
   });
 };
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    ANNOUNCEMENTS
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 async function loadAnnouncements() {
   const el = document.getElementById("announcements-list");
-  el.innerHTML = `<div class="empty-state">Loading…</div>`;
+  el.innerHTML = `<div class="empty-state">Loading...</div>`;
   try {
     const snap = await getDocs(query(collection(db, "announcements"), orderBy("createdAt", "desc")));
     if (snap.empty) { el.innerHTML = `<div class="empty-state">No announcements yet.</div>`; return; }
@@ -769,11 +787,11 @@ async function loadAnnouncements() {
       html += `<div class="list-item">
         <div class="list-item-info">
           <div class="list-item-title">${esc(a.title)} ${status}</div>
-          <div class="list-item-meta">Type: ${esc(a.type||"info")}${a.message ? " · " + esc(a.message) : ""}</div>
+          <div class="list-item-meta">Type: ${esc(a.type||"info")}${a.message ? " - " + esc(a.message) : ""}</div>
         </div>
         <div class="list-item-actions">
-          <button class="btn-icon btn-sm" onclick="editAnnouncement('${d.id}')">✏️ Edit</button>
-          <button class="btn-icon btn-sm danger" onclick="deleteAnnouncement('${d.id}')">🗑️</button>
+          <button class="btn-icon btn-sm" onclick="editAnnouncement('${d.id}')">Edit</button>
+          <button class="btn-icon btn-sm danger" onclick="deleteAnnouncement('${d.id}')">Delete</button>
         </div>
       </div>`;
     });
@@ -854,13 +872,13 @@ window.deleteAnnouncement = function (docId) {
   });
 };
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    SUBJECTS
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 async function loadSubjects() {
   const el = document.getElementById("subjects-list");
-  el.innerHTML = `<div class="empty-state">Loading…</div>`;
+  el.innerHTML = `<div class="empty-state">Loading...</div>`;
   try {
     const snap = await getDocs(query(collection(db, "subjects"), orderBy("order", "asc")));
     if (snap.empty) { el.innerHTML = `<div class="empty-state">No subjects added yet.</div>`; return; }
@@ -874,11 +892,11 @@ async function loadSubjects() {
       html += `<div class="list-item">
         <div class="list-item-info">
           <div class="list-item-title">${esc(s.name)} ${status}</div>
-          <div class="list-item-meta">${esc(s.stream||"—")} · Order: ${s.order||0}${s.description ? " · " + esc(s.description) : ""}</div>
+          <div class="list-item-meta">${esc(s.stream||"-")} - Order: ${s.order||0}${s.description ? " - " + esc(s.description) : ""}</div>
         </div>
         <div class="list-item-actions">
-          <button class="btn-icon btn-sm" onclick="editSubject('${d.id}')">✏️ Edit</button>
-          <button class="btn-icon btn-sm danger" onclick="deleteSubject('${d.id}')">🗑️</button>
+          <button class="btn-icon btn-sm" onclick="editSubject('${d.id}')">Edit</button>
+          <button class="btn-icon btn-sm danger" onclick="deleteSubject('${d.id}')">Delete</button>
         </div>
       </div>`;
     });
@@ -963,9 +981,9 @@ window.deleteSubject = function (docId) {
   });
 };
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    SITE SETTINGS
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 async function loadSiteSettings() {
   try {
@@ -980,6 +998,9 @@ async function loadSiteSettings() {
     document.getElementById("set-whatsapp").value    = s.whatsapp || "";
     document.getElementById("set-seo-title").value   = s.seoTitle || "";
     document.getElementById("set-seo-desc").value    = s.seoDescription || "";
+    document.getElementById("set-exam-title").value  = s.examTitle || "";
+    document.getElementById("set-exam-subtitle").value = s.examSubtitle || "";
+    document.getElementById("set-exam-date").value   = toDateTimeLocalValue(s.examDate || "");
     document.getElementById("set-notice").value      = s.homepageNotice || "";
     document.getElementById("set-maintenance").value = s.maintenanceMode ? "true" : "false";
   } catch (err) {
@@ -997,6 +1018,9 @@ window.saveSiteSettings = async function () {
     whatsapp:        document.getElementById("set-whatsapp").value.trim(),
     seoTitle:        document.getElementById("set-seo-title").value.trim(),
     seoDescription:  document.getElementById("set-seo-desc").value.trim(),
+    examTitle:       document.getElementById("set-exam-title").value.trim(),
+    examSubtitle:    document.getElementById("set-exam-subtitle").value.trim(),
+    examDate:        document.getElementById("set-exam-date").value,
     homepageNotice:  document.getElementById("set-notice").value.trim(),
     maintenanceMode: document.getElementById("set-maintenance").value === "true",
     updatedAt: serverTimestamp(),
@@ -1004,21 +1028,25 @@ window.saveSiteSettings = async function () {
 
   try {
     const ref2 = doc(db, "siteSettings", "main");
-    const snap = await getDoc(ref2);
-    if (snap.exists()) {
-      await updateDoc(ref2, payload);
-    } else {
-      await addDoc(collection(db, "siteSettings"), { ...payload, id: "main" });
-    }
+    await setDoc(ref2, payload, { merge: true });
     showToast("Settings saved.", "success");
   } catch (err) {
     showToast("Failed: " + err.message, "error");
   }
 };
 
-/* ═══════════════════════════════════════════════════════
+function toDateTimeLocalValue(value) {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+/* =======================================================
    MODAL
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 function showModal(title, message, onConfirm) {
   document.getElementById("modal-title").textContent   = title;
@@ -1036,9 +1064,9 @@ document.getElementById("confirm-modal").addEventListener("click", function (e) 
   if (e.target === this) window.closeModal();
 });
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    TOAST
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 window.showToast = function (message, type = "info") {
   const container = document.getElementById("toast-container");
@@ -1053,9 +1081,9 @@ window.showToast = function (message, type = "info") {
   }, 3500);
 };
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    HELPERS
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
 function createSlug(str) {
   return (str || "").toLowerCase()
@@ -1066,7 +1094,7 @@ function createSlug(str) {
 }
 
 function formatFileSize(bytes) {
-  if (!bytes) return "—";
+  if (!bytes) return "-";
   if (bytes < 1024)        return bytes + " B";
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
@@ -1082,8 +1110,8 @@ function detectFileType(file) {
 }
 
 function fileIcon(type) {
-  const m = { PDF: "📄", DOCX: "📝", Image: "🖼️", ZIP: "📦", Book: "📚", "External Link": "🔗" };
-  return m[type] || "📎";
+  const m = { PDF: "PDF", DOCX: "DOC", Image: "IMG", ZIP: "ZIP", Book: "Book", "External Link": "Link" };
+  return m[type] || "File";
 }
 
 function esc(str) {
@@ -1101,7 +1129,7 @@ function set(id, val) {
   if (el) el.textContent = val;
 }
 
-/* ── Drag-over highlight on file drop zone ─────────── */
+/* -- Drag-over highlight on file drop zone ----------- */
 const dropZone = document.getElementById("file-drop-zone");
 if (dropZone) {
   dropZone.addEventListener("dragover",  e => { e.preventDefault(); dropZone.classList.add("drag-over"); });

@@ -5,6 +5,7 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   doc,
   updateDoc,
   query,
@@ -14,7 +15,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 (function () {
-  const store = window.TDRStore;
+  const store = window.APHStore;
   const esc = store.esc;
   const app = initializeApp(firebaseConfig, "public-app");
   const db = getFirestore(app);
@@ -23,6 +24,23 @@ import {
   const types = ["All Types", "Past Paper", "Marking Scheme", "Model Paper", "Term Test Paper", "School Paper", "Book", "Syllabus", "Short Note"];
   const mediums = ["All Mediums", "Tamil", "Sinhala", "English", "Bilingual"];
   const fallbackExamDate = "2026-11-10T00:00:00+05:30";
+  const fallbackExamTitle = "G.C.E. Advanced Level Examination";
+  const fallbackExamSubtitle = "Start revision today. Download subject papers by year, medium and type.";
+
+  function normalizeSettings(settings = {}) {
+    return {
+      ...settings,
+      name: settings.name || settings.siteName || "A/L Paper Hub",
+      tagline: settings.tagline || "Sri Lankan A/L resources arranged by stream, subject, year and medium.",
+      seoTitle: settings.seoTitle || `${settings.name || settings.siteName || "A/L Paper Hub"} - A/L Resources`,
+      seoDesc: settings.seoDesc || settings.seoDescription || "",
+      notice: settings.notice || settings.homepageNotice || "",
+      maintenance: String(settings.maintenance ?? settings.maintenanceMode ?? "false"),
+      examTitle: settings.examTitle || fallbackExamTitle,
+      examSubtitle: settings.examSubtitle || fallbackExamSubtitle,
+      examDate: settings.examDate || fallbackExamDate
+    };
+  }
 
   let state = {
     q: "",
@@ -32,8 +50,17 @@ import {
     medium: "",
     year: "",
     resources: store.getResources().filter((row) => row.status === "published"),
-    settings: store.getSettings(),
+    settings: normalizeSettings(store.getSettings()),
     subjects: store.getSubjects()
+  };
+
+  const pomodoro = {
+    mode: "focus",
+    focusSeconds: 25 * 60,
+    breakSeconds: 5 * 60,
+    remaining: 25 * 60,
+    running: false,
+    lastTick: 0
   };
 
   function badge(type, label) {
@@ -41,7 +68,23 @@ import {
   }
 
   function urlFor(row) {
-    return row.fileUrl || row.externalUrl || "";
+    return normalizeDriveDownloadUrl(row.fileUrl || row.externalUrl || "");
+  }
+
+  function normalizeDriveDownloadUrl(rawUrl) {
+    const url = (rawUrl || "").trim();
+    if (!url) return "";
+    const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
+    if (fileMatch) return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileMatch[1])}`;
+    try {
+      const parsed = new URL(url);
+      if (!/drive\.google\.com$/i.test(parsed.hostname)) return url;
+      const id = parsed.searchParams.get("id");
+      if (id) return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`;
+    } catch (_) {
+      return url;
+    }
+    return url;
   }
 
   function resourceIcon(row) {
@@ -77,6 +120,13 @@ import {
 
   async function loadFirebaseData() {
     try {
+      const settingsSnap = await getDoc(doc(db, "siteSettings", "main"));
+      if (settingsSnap.exists()) state.settings = normalizeSettings(settingsSnap.data());
+    } catch (error) {
+      console.warn("[APH] Firebase settings unavailable, using local fallback.", error);
+    }
+
+    try {
       const resourceSnap = await getDocs(query(collection(db, "resources"), where("status", "==", "published")));
       const resources = [];
       resourceSnap.forEach((item) => resources.push({ id: item.id, ...item.data() }));
@@ -87,7 +137,7 @@ import {
       subjectSnap.forEach((item) => subjects.push({ id: item.id, ...item.data() }));
       if (subjects.length) state.subjects = subjects;
     } catch (error) {
-      console.warn("[TDR] Firebase public data unavailable, using local fallback.", error);
+      console.warn("[APH] Firebase public data unavailable, using local fallback.", error);
     }
   }
 
@@ -105,8 +155,8 @@ import {
 
     return `<nav>
       <a class="nav-logo" href="#home">
-        <div class="nav-logo-icon">TDR</div>
-        <span class="nav-logo-text">${esc(state.settings.name || "The Dark Room")}</span>
+        <div class="nav-logo-icon"><img src="assets/logo.svg" alt="" width="24" height="24" /></div>
+        <span class="nav-logo-text">${esc(state.settings.name || "A/L Paper Hub")}</span>
       </a>
       <div class="nav-links">${links}</div>
       <div class="nav-right">
@@ -122,14 +172,14 @@ import {
     return `<footer>
       <div class="footer-inner">
         <div class="footer-brand">
-          <div class="footer-logo"><div class="footer-logo-icon">TDR</div><span class="footer-logo-name">${esc(state.settings.name || "The Dark Room")}</span></div>
+          <div class="footer-logo"><div class="footer-logo-icon"><img src="assets/logo.svg" alt="" width="24" height="24" /></div><span class="footer-logo-name">${esc(state.settings.name || "A/L Paper Hub")}</span></div>
           <p>${esc(state.settings.tagline || "Sri Lankan A/L resources arranged by stream, subject, year and medium.")}</p>
         </div>
         <div class="footer-col"><h4>Resources</h4><a href="#papers">Past Papers</a><a href="#papers?type=Marking%20Scheme">Marking Schemes</a><a href="#papers?type=Model%20Paper">Model Papers</a></div>
         <div class="footer-col"><h4>Subjects</h4><a href="#subject=Chemistry">Chemistry</a><a href="#subject=Physics">Physics</a><a href="#subject=Combined%20Mathematics">Combined Maths</a></div>
         <div class="footer-col"><h4>Admin</h4><a href="admin/">Admin Login</a><a href="#tools">Study Tools</a><a href="#papers">Browse Library</a></div>
       </div>
-      <div class="footer-bottom"><span>© 2026 ${esc(state.settings.name || "The Dark Room")}</span><span>Sources: DoE Sri Lanka, e-Thaksalawa, NIE and credited schools.</span></div>
+      <div class="footer-bottom"><span>(c) 2026 ${esc(state.settings.name || "A/L Paper Hub")}</span><span>Sources: DoE Sri Lanka, e-Thaksalawa, NIE and credited schools.</span></div>
     </footer>`;
   }
 
@@ -164,8 +214,8 @@ import {
       <div class="countdown-card">
         <div>
           <div class="section-label" style="margin-bottom:6px">Exam Countdown</div>
-          <div class="countdown-title">G.C.E. Advanced Level Examination</div>
-          <div class="countdown-sub" style="margin-top:4px">Start revision today. Download subject papers by year, medium and type.</div>
+          <div class="countdown-title">${esc(state.settings.examTitle || fallbackExamTitle)}</div>
+          <div class="countdown-sub" style="margin-top:4px">${esc(state.settings.examSubtitle || fallbackExamSubtitle)}</div>
         </div>
         <div class="countdown-nums">
           <div class="countdown-unit"><div class="countdown-num" data-countdown="days">${cd.days}</div><div class="countdown-lbl">Days</div></div>
@@ -199,14 +249,14 @@ import {
     const rows = state.subjects.filter((row) => row.status !== "hidden").sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
     return rows.map((row) => `<a class="subject-card" href="#subject=${encodeURIComponent(row.name)}">
       <div class="subject-icon" style="background:rgba(37,99,235,0.1)">${esc(row.name.slice(0, 2).toUpperCase())}</div>
-      <div><div class="subject-name">${esc(row.name)}</div><div class="subject-meta">${esc(row.stream || "A/L")} · ${counts[row.name] || 0} resources</div></div>
+      <div><div class="subject-name">${esc(row.name)}</div><div class="subject-meta">${esc(row.stream || "A/L")} - ${counts[row.name] || 0} resources</div></div>
     </a>`).join("");
   }
 
   function renderHomeResourceCard(row) {
     return `<div class="resource-card">
       <div class="resource-card-top">
-        <div class="resource-card-subject"><div class="resource-subject-dot" style="background:var(--blue)"></div><div class="resource-subject-name">${esc(row.subject)} · ${esc(row.stream || "A/L")}</div></div>
+        <div class="resource-card-subject"><div class="resource-subject-dot" style="background:var(--blue)"></div><div class="resource-subject-name">${esc(row.subject)} - ${esc(row.stream || "A/L")}</div></div>
         <div class="resource-card-title">${esc(row.title)}</div>
         <div class="resource-card-badges">${badge("blue", row.type || "Resource")}${badge("gray", row.medium || "Medium")}${row.year ? badge("amber", row.year) : ""}</div>
         <div class="resource-detail-grid">
@@ -230,7 +280,7 @@ import {
         <div class="hero-grid-bg"></div>
         <div class="hero-glow"></div>
         <div class="hero-content">
-          <div class="hero-pretag"><span></span>Free A/L Resources · Sri Lanka</div>
+          <div class="hero-pretag"><span></span>Free A/L Resources - Sri Lanka</div>
           <h1>Your A/L resources,<br><em>finally organized.</em></h1>
           <p>${esc(state.settings.tagline || "Past papers, marking schemes, model papers and notes for all streams - Tamil, Sinhala and English medium.")}</p>
           <div class="hero-search">
@@ -249,12 +299,12 @@ import {
       </section>
       ${renderQuickCards()}
       <section style="padding:34px 32px;max-width:1180px;margin:0 auto;" id="subjects">
-        <div class="section-hdr"><h2>Browse by subject</h2><a href="#papers">View all resources →</a></div>
+        <div class="section-hdr"><h2>Browse by subject</h2><a href="#papers">View all resources -></a></div>
         <div class="stream-tabs"><div class="stream-tab active">Science</div><div class="stream-tab">Commerce</div><div class="stream-tab">Arts</div><div class="stream-tab">Technology</div><div class="stream-tab">Common</div></div>
         <div class="subject-grid">${renderSubjectCards()}</div>
       </section>
       <section style="padding:34px 32px;max-width:1180px;margin:0 auto;" id="resources">
-        <div class="section-hdr"><h2>Recently added resources</h2><a href="#papers">See all papers →</a></div>
+        <div class="section-hdr"><h2>Recently added resources</h2><a href="#papers">See all papers -></a></div>
         <div class="resource-grid">${shown.length ? shown.map(renderHomeResourceCard).join("") : `<div class="resources-empty">No resources found. Add published resources in admin.</div>`}</div>
       </section>
       ${renderCountdown()}
@@ -263,10 +313,26 @@ import {
   }
 
   function renderTools() {
+    const minutes = Math.floor(pomodoro.remaining / 60);
+    const seconds = pomodoro.remaining % 60;
+    const modeLabel = pomodoro.mode === "focus" ? "Focus" : "Break";
     return `<section style="padding:34px 32px;max-width:1180px;margin:0 auto;" id="tools">
-      <div class="section-hdr"><h2>Exam tools</h2><a href="#papers">Use with past papers →</a></div>
+      <div class="section-hdr"><h2>Exam tools</h2><a href="#papers">Use with past papers -></a></div>
       <div class="tools-grid">
-        <div class="tool-card"><div class="tool-icon">25</div><div class="tool-title">Pomodoro Timer</div><div class="tool-desc">25-minute focus sessions with short breaks for daily revision.</div></div>
+        <div class="tool-card pomodoro-card">
+          <div class="tool-icon">${modeLabel}</div>
+          <div class="tool-title">Pomodoro Timer</div>
+          <div class="pomodoro-time" data-pomodoro-time>${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}</div>
+          <div class="tool-desc" data-pomodoro-status>${pomodoro.running ? `${modeLabel} session running` : `${modeLabel} session ready`}</div>
+          <div class="pomodoro-actions">
+            <button class="pomodoro-btn primary" data-pomodoro-action="toggle">${pomodoro.running ? "Pause" : "Start"}</button>
+            <button class="pomodoro-btn" data-pomodoro-action="reset">Reset</button>
+          </div>
+          <div class="pomodoro-modes">
+            <button class="${pomodoro.mode === "focus" ? "active" : ""}" data-pomodoro-mode="focus">25 min focus</button>
+            <button class="${pomodoro.mode === "break" ? "active" : ""}" data-pomodoro-mode="break">5 min break</button>
+          </div>
+        </div>
         <div class="tool-card"><div class="tool-icon">PLAN</div><div class="tool-title">Study Timetable Generator</div><div class="tool-desc">Use subjects and remaining days to plan weekly revision.</div></div>
         <div class="tool-card"><div class="tool-icon">Z</div><div class="tool-title">Z-score Guide</div><div class="tool-desc">Keep official Z-score and university entry links as resources.</div></div>
       </div>
@@ -298,7 +364,7 @@ import {
     const shown = filteredResources(subjectRows);
     const subject = state.subjects.find((row) => row.name === subjectName);
     const title = subjectName || "All A/L Resources";
-    const crumbs = `<a href="#home">Home</a><span class="breadcrumb-sep">›</span><span style="color:var(--text1)">${esc(title)}</span>`;
+    const crumbs = `<a href="#home">Home</a><span class="breadcrumb-sep">></span><span style="color:var(--text1)">${esc(title)}</span>`;
 
     return `${renderNav("Past Papers")}
       <div class="subject-page-hero">
@@ -357,9 +423,9 @@ import {
     const related = state.resources.filter((item) => item.id !== row.id && item.subject === row.subject).slice(0, 4);
     return `${renderNav("Past Papers")}
       <div class="page-header">
-        <div class="breadcrumb"><a href="#home">Home</a><span class="breadcrumb-sep">›</span><a href="#subject=${encodeURIComponent(row.subject)}">${esc(row.subject)}</a><span class="breadcrumb-sep">›</span><span style="color:var(--text1)">${esc(row.title)}</span></div>
+        <div class="breadcrumb"><a href="#home">Home</a><span class="breadcrumb-sep">></span><a href="#subject=${encodeURIComponent(row.subject)}">${esc(row.subject)}</a><span class="breadcrumb-sep">></span><span style="color:var(--text1)">${esc(row.title)}</span></div>
         <h1>${esc(row.title)}</h1>
-        <div class="page-header-sub">${esc(row.paperPart || "Full Paper")} · ${esc(row.examType || "G.C.E. Advanced Level")}</div>
+        <div class="page-header-sub">${esc(row.paperPart || "Full Paper")} - ${esc(row.examType || "G.C.E. Advanced Level")}</div>
       </div>
       <div class="download-layout">
         <div>
@@ -386,7 +452,7 @@ import {
           </div>
           <div class="dl-sidebar-card">
             <div class="dl-sidebar-title">Related papers</div>
-            ${related.length ? related.map((item) => `<div class="related-item" data-paper="${esc(item.id)}"><div class="related-icon">${resourceIcon(item)}</div><div><div class="related-item-title">${esc(item.title)}</div><div class="related-item-meta">${esc(item.type)} · ${esc(item.medium)} · ${esc(item.year || "")}</div></div></div>`).join("") : `<div class="related-item-meta">No related resources yet.</div>`}
+            ${related.length ? related.map((item) => `<div class="related-item" data-paper="${esc(item.id)}"><div class="related-icon">${resourceIcon(item)}</div><div><div class="related-item-title">${esc(item.title)}</div><div class="related-item-meta">${esc(item.type)} - ${esc(item.medium)} - ${esc(item.year || "")}</div></div></div>`).join("") : `<div class="related-item-meta">No related resources yet.</div>`}
           </div>
         </div>
       </div>
@@ -412,9 +478,9 @@ import {
   }
 
   function render() {
-    document.title = state.settings.seoTitle || `${state.settings.name || "The Dark Room"} - A/L Resources`;
+    document.title = state.settings.seoTitle || `${state.settings.name || "A/L Paper Hub"} - A/L Resources`;
     if (state.settings.maintenance === "true") {
-      document.body.innerHTML = `<main class="hero"><div class="hero-content"><h1>${esc(state.settings.name || "The Dark Room")} is under maintenance.</h1><p>${esc(state.settings.tagline || "")}</p></div></main>`;
+      document.body.innerHTML = `<main class="hero"><div class="hero-content"><h1>${esc(state.settings.name || "A/L Paper Hub")} is under maintenance.</h1><p>${esc(state.settings.tagline || "")}</p></div></main>`;
       return;
     }
     const route = parseHash();
@@ -424,7 +490,7 @@ import {
     else if (route.page === "tools") document.body.innerHTML = `${renderNav("Study Tools")}${renderCountdown()}${renderTools()}${renderFooter()}`;
     else document.body.innerHTML = renderHome();
     bind();
-    if (window.TDRTheme) window.TDRTheme.init();
+    if (window.APHTheme) window.APHTheme.init();
   }
 
   function bind() {
@@ -466,6 +532,59 @@ import {
     document.querySelectorAll("[data-report]").forEach((button) => {
       button.addEventListener("click", () => reportResource(button.dataset.report));
     });
+    document.querySelectorAll("[data-pomodoro-action]").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (button.dataset.pomodoroAction === "toggle") togglePomodoro();
+        if (button.dataset.pomodoroAction === "reset") resetPomodoro();
+      });
+    });
+    document.querySelectorAll("[data-pomodoro-mode]").forEach((button) => {
+      button.addEventListener("click", () => setPomodoroMode(button.dataset.pomodoroMode));
+    });
+  }
+
+  function setPomodoroMode(mode) {
+    pomodoro.mode = mode === "break" ? "break" : "focus";
+    pomodoro.running = false;
+    pomodoro.remaining = pomodoro.mode === "focus" ? pomodoro.focusSeconds : pomodoro.breakSeconds;
+    render();
+  }
+
+  function togglePomodoro() {
+    pomodoro.running = !pomodoro.running;
+    pomodoro.lastTick = Date.now();
+    render();
+  }
+
+  function resetPomodoro() {
+    pomodoro.running = false;
+    pomodoro.remaining = pomodoro.mode === "focus" ? pomodoro.focusSeconds : pomodoro.breakSeconds;
+    render();
+  }
+
+  function updatePomodoroDisplay() {
+    const minutes = Math.floor(pomodoro.remaining / 60);
+    const seconds = pomodoro.remaining % 60;
+    const time = document.querySelector("[data-pomodoro-time]");
+    const status = document.querySelector("[data-pomodoro-status]");
+    if (time) time.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    if (status) status.textContent = pomodoro.running ? `${pomodoro.mode === "focus" ? "Focus" : "Break"} session running` : `${pomodoro.mode === "focus" ? "Focus" : "Break"} session ready`;
+  }
+
+  function tickPomodoro() {
+    if (!pomodoro.running) return;
+    const now = Date.now();
+    const elapsed = Math.floor((now - pomodoro.lastTick) / 1000);
+    if (elapsed < 1) return;
+    pomodoro.lastTick += elapsed * 1000;
+    pomodoro.remaining = Math.max(0, pomodoro.remaining - elapsed);
+    if (pomodoro.remaining === 0) {
+      pomodoro.mode = pomodoro.mode === "focus" ? "break" : "focus";
+      pomodoro.remaining = pomodoro.mode === "focus" ? pomodoro.focusSeconds : pomodoro.breakSeconds;
+      render();
+      return;
+    }
+    updatePomodoroDisplay();
   }
 
   async function openResource(id) {
@@ -509,11 +628,12 @@ import {
 
   window.addEventListener("hashchange", render);
   window.addEventListener("tdr-store-change", () => {
-    state.settings = store.getSettings();
+    state.settings = normalizeSettings(store.getSettings());
     state.subjects = store.getSubjects();
     render();
   });
 
   loadFirebaseData().then(render);
   setInterval(tickCountdown, 30000);
+  setInterval(tickPomodoro, 1000);
 })();

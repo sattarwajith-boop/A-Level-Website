@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>The Dark Room — Sri Lankan A/L Papers & Resources</title>
+<title>A/L Paper Hub - Sri Lankan A/L Papers & Resources</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=Noto+Sans+Tamil:wght@400;500&display=swap" rel="stylesheet" />
@@ -29,6 +29,9 @@
 
 <!-- Load config FIRST so SITE object is available when render() runs -->
 <script src="config.js"></script>
+<script defer src="tdr-store.js"></script>
+<script defer src="theme.js"></script>
+<script type="module" src="public-app.js"></script>
 </head>
 <body>
 
@@ -44,14 +47,8 @@
    HELPER FUNCTIONS
 ──────────────────────────────────────────────────────── */
 
-/** TDR book + moon SVG shared across navs */
-const LOGO_SVG = `<svg viewBox="0 0 64 64" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <rect x="6" y="8" width="52" height="48" rx="15" fill="#07111f"/>
-  <circle cx="46" cy="18" r="7" fill="#f4c35a"/>
-  <path d="M18 39h28" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M20 24h24v24H20z" stroke="#2563eb" stroke-width="4" stroke-linejoin="round"/>
-  <text x="32" y="37" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="800" fill="#f8fafc">TDR</text>
-</svg>`;
+/** Paper + Spark logo shared across navs */
+const LOGO_SVG = `<img src="assets/logo.svg" alt="" width="24" height="24" />`;
 
 /** Render badge HTML from [type, label] pair */
 function badge([type, label]) {
@@ -544,9 +541,5 @@ document.body.innerHTML =
   renderPage3();
 </script>
 
-<!-- Working app layer: local admin-managed data with real search, filters, downloads and reports -->
-<script src="tdr-store.js"></script>
-<script src="theme.js"></script>
-<script type="module" src="public-app.js"></script>
 </body>
 </html>
