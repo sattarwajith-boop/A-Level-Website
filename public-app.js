@@ -49,10 +49,17 @@ import {
     type: "",
     medium: "",
     year: "",
+    loading: true,
+    navOpen: false,
+    modal: null,
+    savedIds: readIdSet("aph.saved"),
+    doneIds: readIdSet("aph.done"),
     resources: store.getResources().filter((row) => row.status === "published"),
     settings: normalizeSettings(store.getSettings()),
     subjects: store.getSubjects()
   };
+
+  let searchTimer = 0;
 
   const pomodoro = {
     mode: "focus",
@@ -65,6 +72,26 @@ import {
 
   function badge(type, label) {
     return `<span class="badge badge-${type}">${esc(label)}</span>`;
+  }
+
+  function readIdSet(key) {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(key) || "[]"));
+    } catch (_) {
+      return new Set();
+    }
+  }
+
+  function writeIdSet(key, set) {
+    localStorage.setItem(key, JSON.stringify([...set]));
+  }
+
+  function isSaved(id) {
+    return state.savedIds.has(id);
+  }
+
+  function isDone(id) {
+    return state.doneIds.has(id);
   }
 
   function urlFor(row) {
@@ -123,6 +150,28 @@ import {
     return "🎓";
   }
 
+  function subjectLocalLabel(name = "") {
+    const labels = {
+      Chemistry: "රසායන විද්‍යාව · இரசாயனவியல்",
+      Physics: "භෞතික විද්‍යාව · பௌதிகவியல்",
+      Biology: "ජීව විද්‍යාව · உயிரியல்",
+      "Combined Mathematics": "සංයුක්ත ගණිතය · இணைந்த கணிதம்",
+      "Agricultural Science": "කෘෂි විද්‍යාව · விவசாய அறிவியல்",
+      "Science for Technology": "තාක්ෂණය සඳහා විද්‍යාව · தொழில்நுட்பத்திற்கான அறிவியல்",
+      "Information & Comm. Tech": "තොරතුරු තාක්ෂණය · தகவல் தொடர்பாடல் தொழில்நுட்பம்",
+      "Engineering Technology": "ඉංජිනේරු තාක්ෂණය · பொறியியல் தொழில்நுட்பம்",
+      Accounting: "ගිණුම්කරණය · கணக்கியல்",
+      Economics: "ආර්ථික විද්‍යාව · பொருளியல்",
+      "Business Studies": "ව්‍යාපාර අධ්‍යයනය · வணிகக் கல்வி",
+      Geography: "භූගෝල විද්‍යාව · புவியியல்",
+      History: "ඉතිහාසය · வரலாறு",
+      "Political Science": "දේශපාලන විද්‍යාව · அரசியல் அறிவியல்",
+      "General English": "සාමාන්‍ය ඉංග්‍රීසි · பொது ஆங்கிலம்",
+      "Common General Test": "සාමාන්‍ය පොදු පරීක්ෂණය · பொது பொது பரீட்சை"
+    };
+    return labels[name] || "";
+  }
+
   function quickEmoji(title = "") {
     const value = String(title).toLowerCase();
     if (value.includes("past")) return "📄";
@@ -146,10 +195,11 @@ import {
 
   function filteredResources(base = state.resources) {
     const q = state.q.toLowerCase();
+    const activeStreams = state.stream ? streamForTab(state.stream) : [];
     return base.filter((row) => {
       const haystack = [row.title, row.subject, row.stream, row.type, row.medium, row.year, row.source, ...(row.tags || [])].join(" ").toLowerCase();
       return (!q || haystack.includes(q)) &&
-        (!state.stream || row.stream === state.stream) &&
+        (!activeStreams.length || activeStreams.includes(row.stream)) &&
         (!state.subject || row.subject === state.subject) &&
         (!state.type || row.type === state.type) &&
         (!state.medium || row.medium === state.medium) &&
@@ -157,26 +207,37 @@ import {
     });
   }
 
+  function withTimeout(promise, ms, label) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out`)), ms))
+    ]);
+  }
+
   async function loadFirebaseData() {
+    state.loading = true;
+    render();
     try {
-      const settingsSnap = await getDoc(doc(db, "siteSettings", "main"));
+      const settingsSnap = await withTimeout(getDoc(doc(db, "siteSettings", "main")), 2500, "Settings load");
       if (settingsSnap.exists()) state.settings = normalizeSettings(settingsSnap.data());
     } catch (error) {
       console.warn("[APH] Firebase settings unavailable, using local fallback.", error);
     }
 
     try {
-      const resourceSnap = await getDocs(query(collection(db, "resources"), where("status", "==", "published")));
+      const resourceSnap = await withTimeout(getDocs(query(collection(db, "resources"), where("status", "==", "published"))), 3500, "Resources load");
       const resources = [];
       resourceSnap.forEach((item) => resources.push({ id: item.id, ...item.data() }));
       if (resources.length) state.resources = resources;
 
-      const subjectSnap = await getDocs(collection(db, "subjects"));
+      const subjectSnap = await withTimeout(getDocs(collection(db, "subjects")), 2500, "Subjects load");
       const subjects = [];
       subjectSnap.forEach((item) => subjects.push({ id: item.id, ...item.data() }));
       if (subjects.length) state.subjects = subjects;
     } catch (error) {
       console.warn("[APH] Firebase public data unavailable, using local fallback.", error);
+    } finally {
+      state.loading = false;
     }
   }
 
@@ -188,6 +249,7 @@ import {
       ["Marking Schemes", "#papers?type=Marking%20Scheme"],
       ["Books & Syllabuses", "#papers?type=Syllabus"],
       ["Short Notes", "#papers?type=Short%20Note"],
+      ["Saved", "#saved"],
       ["Study Tools", "#tools"],
       ["Admin", "admin/"]
     ].map(([label, href]) => `<a class="nav-link${label === active ? " active" : ""}" href="${href}">${label}</a>`).join("");
@@ -197,6 +259,7 @@ import {
         <div class="nav-logo-icon"><img src="assets/logo.png?v=custom-logo" alt="" width="24" height="24" /></div>
         <span class="nav-logo-text">${esc(state.settings.name || "A/L Paper Hub")}</span>
       </a>
+      <button class="nav-menu-btn" data-nav-toggle aria-label="Open menu">☰</button>
       <div class="nav-links">${links}</div>
       <div class="nav-right">
         <div class="nav-search-box">
@@ -204,6 +267,15 @@ import {
         </div>
         <button class="theme-toggle" aria-label="Toggle theme"></button>
       </div>
+      <div class="mobile-nav${state.navOpen ? " open" : ""}">
+        <div class="mobile-nav-head">
+          <strong>${esc(state.settings.name || "A/L Paper Hub")}</strong>
+          <button data-nav-close aria-label="Close menu">×</button>
+        </div>
+        <div class="mobile-nav-search"><input id="mobile-search" placeholder="Search papers..." type="text" value="${esc(state.q)}" /></div>
+        <div class="mobile-nav-links">${links}</div>
+      </div>
+      <button class="mobile-nav-scrim${state.navOpen ? " open" : ""}" data-nav-close aria-label="Close menu"></button>
     </nav>`;
   }
 
@@ -285,11 +357,58 @@ import {
       acc[row.subject] = (acc[row.subject] || 0) + 1;
       return acc;
     }, {});
-    const rows = state.subjects.filter((row) => row.status !== "hidden").sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+    const activeStreams = state.stream ? streamForTab(state.stream) : streamForTab("Science");
+    const rows = state.subjects
+      .filter((row) => row.status !== "hidden")
+      .filter((row) => !activeStreams.length || activeStreams.includes(row.stream))
+      .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
     return rows.map((row) => `<a class="subject-card" href="#subject=${encodeURIComponent(row.name)}">
       <div class="subject-icon" style="background:rgba(37,99,235,0.1)">${subjectEmoji(row.name)}</div>
-      <div><div class="subject-name">${esc(row.name)}</div><div class="subject-meta">${esc(row.stream || "A/L")} - ${counts[row.name] || 0} resources</div></div>
+      <div><div class="subject-name">${esc(row.name)}</div><div class="subject-meta">${esc(subjectLocalLabel(row.name) || row.stream || "A/L")}</div><div class="subject-meta">${counts[row.name] || 0} resources</div></div>
     </a>`).join("");
+  }
+
+  function streamForTab(label) {
+    if (label === "Science") return ["Physical Science", "Bio Science", "Science"];
+    if (label === "Common") return ["Common Resources"];
+    return [label];
+  }
+
+  function streamEmoji(label = "") {
+    const value = String(label).toLowerCase();
+    if (value.includes("science")) return "🔬";
+    if (value.includes("commerce")) return "💼";
+    if (value.includes("arts")) return "🏛️";
+    if (value.includes("technology")) return "💻";
+    if (value.includes("common")) return "🧠";
+    return "🎓";
+  }
+
+  function renderStreamTabs() {
+    const tabs = ["Science", "Commerce", "Arts", "Technology", "Common"];
+    return `<div class="stream-tabs">${tabs.map((tab) => `<button class="stream-tab${state.stream === tab || (!state.stream && tab === "Science") ? " active" : ""}" data-stream-tab="${esc(tab)}">${streamEmoji(tab)} ${esc(tab)}</button>`).join("")}</div>`;
+  }
+
+  function renderSkeletonCards(count = 6) {
+    return Array.from({ length: count }, () => `<div class="skeleton-card" aria-hidden="true">
+      <div class="skeleton-line short"></div>
+      <div class="skeleton-line title"></div>
+      <div class="skeleton-chip-row"><span></span><span></span><span></span></div>
+      <div class="skeleton-grid"><span></span><span></span><span></span><span></span></div>
+      <div class="skeleton-actions"><span></span><span></span></div>
+    </div>`).join("");
+  }
+
+  function renderResourceActions(row, variant = "card") {
+    const id = esc(row.id);
+    const saved = isSaved(row.id);
+    const done = isDone(row.id);
+    const viewClass = variant === "list" ? "rlist-view-btn" : "resource-view-btn";
+    const dlClass = variant === "list" ? "rlist-dl-btn" : "resource-dl-btn";
+    return `<button class="${viewClass}" data-paper="${id}">👁️ View Details</button>
+      <button class="${viewClass}${saved ? " saved" : ""}" data-bookmark="${id}">${saved ? "⭐ Saved" : "☆ Save"}</button>
+      <button class="${viewClass}${done ? " done" : ""}" data-done="${id}">${done ? "✅ Done" : "☐ Done"}</button>
+      <button class="${dlClass}" data-open="${id}">⬇️ Download PDF</button>`;
   }
 
   function renderHomeResourceCard(row) {
@@ -306,8 +425,7 @@ import {
         </div>
       </div>
       <div class="resource-card-bottom resource-card-actions">
-        <button class="resource-view-btn" data-paper="${esc(row.id)}">👁️ View Details</button>
-        <button class="resource-dl-btn" data-open="${esc(row.id)}">⬇️ Download PDF</button>
+        ${renderResourceActions(row, "card")}
       </div>
     </div>`;
   }
@@ -339,12 +457,12 @@ import {
       ${renderQuickCards()}
       <section style="padding:34px 32px;max-width:1180px;margin:0 auto;" id="subjects">
         <div class="section-hdr"><h2>Browse by subject</h2><a href="#papers">View all resources -></a></div>
-        <div class="stream-tabs"><div class="stream-tab active">Science</div><div class="stream-tab">Commerce</div><div class="stream-tab">Arts</div><div class="stream-tab">Technology</div><div class="stream-tab">Common</div></div>
+        ${renderStreamTabs()}
         <div class="subject-grid">${renderSubjectCards()}</div>
       </section>
       <section style="padding:34px 32px;max-width:1180px;margin:0 auto;" id="resources">
         <div class="section-hdr"><h2>Recently added resources</h2><a href="#papers">See all papers -></a></div>
-        <div class="resource-grid">${shown.length ? shown.map(renderHomeResourceCard).join("") : `<div class="resources-empty">No resources found. Add published resources in admin.</div>`}</div>
+        <div class="resource-grid">${state.loading ? renderSkeletonCards(6) : shown.length ? shown.map(renderHomeResourceCard).join("") : `<div class="resources-empty">No resources found. Add published resources in admin.</div>`}</div>
       </section>
       ${renderCountdown()}
       ${renderTools()}
@@ -392,10 +510,20 @@ import {
         </div>
       </div>
       <div class="rlist-action">
-        <button class="rlist-view-btn" data-paper="${esc(row.id)}">👁️ View Details</button>
-        <button class="rlist-dl-btn" data-open="${esc(row.id)}">⬇️ Download PDF</button>
+        ${renderResourceActions(row, "list")}
       </div>
     </div>`).join("");
+  }
+
+  function renderProgressBlock(rows, label = "Selected papers") {
+    const total = rows.length;
+    const done = rows.filter((row) => isDone(row.id)).length;
+    const percent = total ? Math.round((done / total) * 100) : 0;
+    return `<div class="progress-panel">
+      <div><strong>✅ Study progress</strong><span>${esc(label)} · ${done}/${total} done</span></div>
+      <div class="progress-track"><span style="width:${percent}%"></span></div>
+      <b>${percent}%</b>
+    </div>`;
   }
 
   function renderPapers(subjectName = "") {
@@ -428,7 +556,28 @@ import {
         <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">${renderCompactSelects()}</div>
       </div>
       <div style="padding:28px 32px;max-width:1180px;margin:0 auto;">
+        ${renderProgressBlock(subjectRows, title)}
         <div class="resource-list">${shown.length ? renderPaperList(shown) : `<div class="resources-empty">No papers found for this filter.</div>`}</div>
+      </div>
+      ${renderFooter()}`;
+  }
+
+  function renderSavedPage() {
+    const savedRows = state.resources.filter((row) => isSaved(row.id));
+    const doneRows = state.resources.filter((row) => isDone(row.id));
+    return `${renderNav("Saved")}
+      <div class="page-header">
+        <div class="breadcrumb"><a href="#home">Home</a><span class="breadcrumb-sep">></span><span style="color:var(--text1)">Saved</span></div>
+        <h1>⭐ Saved papers</h1>
+        <div class="page-header-sub">${savedRows.length} saved resources · ${doneRows.length} completed for revision</div>
+      </div>
+      <div style="padding:28px 32px;max-width:1180px;margin:0 auto;">
+        <div class="saved-summary">
+          <div><strong>${savedRows.length}</strong><span>Saved</span></div>
+          <div><strong>${doneRows.length}</strong><span>Done</span></div>
+          <div><strong>${state.resources.length ? Math.round((doneRows.length / state.resources.length) * 100) : 0}%</strong><span>Total progress</span></div>
+        </div>
+        <div class="resource-list">${savedRows.length ? renderPaperList(savedRows) : `<div class="resources-empty">No saved papers yet. Use the ☆ Save button on any resource.</div>`}</div>
       </div>
       ${renderFooter()}`;
   }
@@ -476,8 +625,11 @@ import {
             <div class="dl-info">
               <div class="dl-meta-grid">${detailMeta(row)}</div>
               <div class="dl-actions">
-                <button class="dl-btn-primary" data-open="${esc(row.id)}">Download Paper PDF</button>
-                <button class="dl-btn-secondary" data-open="${esc(row.id)}">View PDF Online</button>
+                <button class="dl-btn-primary" data-open="${esc(row.id)}">⬇️ Download Paper PDF</button>
+                <button class="dl-btn-secondary" data-preview="${esc(row.id)}">👁️ Preview PDF</button>
+                <button class="dl-btn-secondary" data-bookmark="${esc(row.id)}">${isSaved(row.id) ? "⭐ Saved" : "☆ Save"}</button>
+                <button class="dl-btn-secondary" data-done="${esc(row.id)}">${isDone(row.id) ? "✅ Done" : "☐ Mark Done"}</button>
+                <button class="dl-btn-secondary" data-copy-link="${esc(row.id)}">🔗 Copy Link</button>
                 <button class="dl-btn-secondary" data-report="${esc(row.id)}" style="font-size:13px;padding:10px 20px">Report Broken Link</button>
               </div>
               <div class="source-credit"><strong>Source credit:</strong> ${esc(row.source || "Source not listed. Add source in admin for copyright-safe publishing.")}</div>
@@ -503,6 +655,32 @@ import {
       ${renderFooter()}`;
   }
 
+  function googleViewerUrl(row) {
+    const url = urlFor(row);
+    if (!url) return "";
+    return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
+  }
+
+  function renderModal() {
+    if (!state.modal || state.modal.type !== "preview") return "";
+    const row = state.resources.find((item) => item.id === state.modal.id);
+    if (!row) return "";
+    const viewer = googleViewerUrl(row);
+    return `<div class="pdf-modal-backdrop" data-modal-close>
+      <div class="pdf-modal" role="dialog" aria-modal="true" aria-label="PDF preview">
+        <div class="pdf-modal-head">
+          <div><strong>👁️ ${esc(row.title)}</strong><span>${esc(row.subject || "A/L")} · ${esc(row.medium || "Medium")} · ${esc(row.year || "")}</span></div>
+          <button data-modal-close aria-label="Close preview">×</button>
+        </div>
+        ${viewer ? `<iframe class="pdf-modal-frame" src="${esc(viewer)}" title="${esc(row.title)}"></iframe>` : `<div class="resources-empty">No preview link is saved for this resource.</div>`}
+        <div class="pdf-modal-actions">
+          <button class="dl-btn-secondary" data-copy-link="${esc(row.id)}">🔗 Copy Link</button>
+          <button class="dl-btn-primary" data-open="${esc(row.id)}">⬇️ Download PDF</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
   function parseHash() {
     const raw = decodeURIComponent(location.hash || "#home");
     if (raw.startsWith("#paper=")) return { page: "paper", id: raw.slice(7) };
@@ -512,6 +690,7 @@ import {
       if (typeMatch) state.type = typeMatch[1];
       return { page: "papers" };
     }
+    if (raw.startsWith("#saved")) return { page: "saved" };
     if (raw.startsWith("#tools")) return { page: "tools" };
     return { page: "home" };
   }
@@ -526,13 +705,27 @@ import {
     if (route.page === "paper") document.body.innerHTML = renderPaperDetail(route.id);
     else if (route.page === "subject") document.body.innerHTML = renderPapers(route.subject);
     else if (route.page === "papers") document.body.innerHTML = renderPapers("");
+    else if (route.page === "saved") document.body.innerHTML = renderSavedPage();
     else if (route.page === "tools") document.body.innerHTML = `${renderNav("Study Tools")}${renderCountdown()}${renderTools()}${renderFooter()}`;
     else document.body.innerHTML = renderHome();
+    document.body.insertAdjacentHTML("beforeend", renderModal());
     bind();
     if (window.APHTheme) window.APHTheme.init();
   }
 
   function bind() {
+    document.querySelectorAll("[data-nav-toggle]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.navOpen = true;
+        render();
+      });
+    });
+    document.querySelectorAll("[data-nav-close]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.navOpen = false;
+        render();
+      });
+    });
     document.querySelectorAll("[data-filter]").forEach((select) => {
       select.addEventListener("change", () => {
         state[select.dataset.filter] = select.value;
@@ -545,10 +738,25 @@ import {
         render();
       });
     });
-    document.querySelectorAll("#hero-search-input,#nav-search").forEach((input) => {
+    document.querySelectorAll("[data-stream-tab]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.stream = button.dataset.streamTab;
+        state.subject = "";
+        render();
+      });
+    });
+    document.querySelectorAll("#hero-search-input,#nav-search,#mobile-search").forEach((input) => {
+      input.addEventListener("input", () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          state.q = input.value.trim();
+          if (location.hash.startsWith("#papers") || location.hash.startsWith("#subject")) render();
+        }, 250);
+      });
       input.addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
           state.q = input.value.trim();
+          state.navOpen = false;
           location.hash = "#papers";
           render();
         }
@@ -568,6 +776,23 @@ import {
     document.querySelectorAll("[data-open]").forEach((button) => {
       button.addEventListener("click", () => openResource(button.dataset.open));
     });
+    document.querySelectorAll("[data-preview]").forEach((button) => {
+      button.addEventListener("click", () => openPreview(button.dataset.preview));
+    });
+    document.querySelectorAll("[data-bookmark]").forEach((button) => {
+      button.addEventListener("click", () => toggleBookmark(button.dataset.bookmark));
+    });
+    document.querySelectorAll("[data-done]").forEach((button) => {
+      button.addEventListener("click", () => toggleDone(button.dataset.done));
+    });
+    document.querySelectorAll("[data-copy-link]").forEach((button) => {
+      button.addEventListener("click", () => copyShareLink(button.dataset.copyLink));
+    });
+    document.querySelectorAll("[data-modal-close]").forEach((item) => {
+      item.addEventListener("click", (event) => {
+        if (event.target === item || item.tagName === "BUTTON") closeModal();
+      });
+    });
     document.querySelectorAll("[data-report]").forEach((button) => {
       button.addEventListener("click", () => reportResource(button.dataset.report));
     });
@@ -580,6 +805,81 @@ import {
     document.querySelectorAll("[data-pomodoro-mode]").forEach((button) => {
       button.addEventListener("click", () => setPomodoroMode(button.dataset.pomodoroMode));
     });
+  }
+
+  function showToast(message, type = "info") {
+    let stack = document.querySelector(".toast-stack");
+    if (!stack) {
+      stack = document.createElement("div");
+      stack.className = "toast-stack";
+      document.body.appendChild(stack);
+    }
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    stack.appendChild(toast);
+    setTimeout(() => toast.classList.add("show"), 20);
+    setTimeout(() => {
+      toast.classList.remove("show");
+      setTimeout(() => toast.remove(), 250);
+    }, 2800);
+  }
+
+  function openPreview(id) {
+    const row = state.resources.find((item) => item.id === id);
+    if (!row || !urlFor(row)) {
+      showToast("No preview link is saved for this resource yet.", "error");
+      return;
+    }
+    state.modal = { type: "preview", id };
+    render();
+  }
+
+  function closeModal() {
+    state.modal = null;
+    render();
+  }
+
+  function toggleBookmark(id) {
+    let message = "";
+    let type = "info";
+    if (state.savedIds.has(id)) {
+      state.savedIds.delete(id);
+      message = "Removed from saved papers.";
+    } else {
+      state.savedIds.add(id);
+      message = "Saved for later revision.";
+      type = "success";
+    }
+    writeIdSet("aph.saved", state.savedIds);
+    render();
+    showToast(message, type);
+  }
+
+  function toggleDone(id) {
+    let message = "";
+    let type = "info";
+    if (state.doneIds.has(id)) {
+      state.doneIds.delete(id);
+      message = "Marked as not done.";
+    } else {
+      state.doneIds.add(id);
+      message = "Nice. Marked as done.";
+      type = "success";
+    }
+    writeIdSet("aph.done", state.doneIds);
+    render();
+    showToast(message, type);
+  }
+
+  async function copyShareLink(id) {
+    const link = `${location.origin}${location.pathname}#paper=${encodeURIComponent(id)}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      showToast("Paper link copied.", "success");
+    } catch (_) {
+      prompt("Copy this paper link:", link);
+    }
   }
 
   function setPomodoroMode(mode) {
@@ -630,7 +930,7 @@ import {
     const row = state.resources.find((item) => item.id === id);
     const url = row && urlFor(row);
     if (!url) {
-      alert("No download link is saved for this resource yet.");
+      showToast("No download link is saved for this resource yet.", "error");
       return;
     }
     try {
@@ -640,6 +940,7 @@ import {
       store.saveResource(row);
     }
     window.open(url, "_blank", "noopener");
+    showToast("Opening the PDF download.", "success");
   }
 
   async function reportResource(id) {
@@ -652,7 +953,7 @@ import {
     } catch (_) {
       store.saveReport(report);
     }
-    alert("Thanks. The report was saved for admin review.");
+    showToast("Thanks. The report was saved for admin review.", "success");
   }
 
   function tickCountdown() {

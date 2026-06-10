@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=Noto+Sans+Tamil:wght@400;500&display=swap" rel="stylesheet" />
 <link rel="icon" type="image/png" href="assets/favicon.png?v=custom-logo" />
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=custom-logo" />
+<link rel="manifest" href="manifest.webmanifest" />
 <link rel="stylesheet" href="styles.css" />
 
 <!--
@@ -31,7 +32,12 @@
 <script src="config.js"></script>
 <script defer src="tdr-store.js"></script>
 <script defer src="theme.js"></script>
-<script type="module" src="public-app.js?v=custom-logo"></script>
+<script type="module" src="public-app.js?v=upgrade-guide-2"></script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+}
+</script>
 </head>
 <body>
 
