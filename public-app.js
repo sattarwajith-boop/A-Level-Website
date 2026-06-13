@@ -127,6 +127,18 @@ import {
     return url;
   }
 
+  function driveFileIdFromUrl(rawUrl) {
+    const url = String(rawUrl || "").trim();
+    if (!url) return "";
+    const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/?#]+)/i);
+    if (fileMatch) return fileMatch[1];
+    try {
+      const parsed = new URL(url);
+      if (/drive\.google\.com$/i.test(parsed.hostname)) return parsed.searchParams.get("id") || "";
+    } catch (_) {}
+    return "";
+  }
+
   function resourceIcon(row) {
     return resourceEmoji(row.type);
   }
@@ -420,11 +432,11 @@ import {
     const dlClass = variant === "list" ? "rlist-dl-btn" : "resource-dl-btn";
     return `<button class="${viewClass}${saved ? " saved" : ""}" data-bookmark="${id}">${saved ? "⭐ Saved" : "☆ Save"}</button>
       <button class="${viewClass}${done ? " done" : ""}" data-done="${id}">✅ Done</button>
-      <button class="${dlClass}" data-open="${id}">Open PDF</button>`;
+      <button class="${dlClass}" data-paper="${id}">View Details</button>`;
   }
 
   function renderHomeResourceCard(row) {
-    return `<div class="resource-card" data-open-card="${esc(row.id)}" tabindex="0" role="link" aria-label="Open ${esc(row.title)}">
+    return `<div class="resource-card" data-paper-card="${esc(row.id)}" tabindex="0" role="link" aria-label="Open details for ${esc(row.title)}">
       <div class="resource-card-top">
         <div class="resource-card-subject"><div class="resource-subject-dot" style="background:var(--blue)"></div><div class="resource-subject-name">${subjectEmoji(row.subject)} ${esc(row.subject)} - ${esc(row.stream || "A/L")}</div></div>
         <div class="resource-card-title">${esc(row.title)}</div>
@@ -509,7 +521,7 @@ import {
   }
 
   function renderPaperList(rows) {
-    return rows.map((row) => `<div class="rlist-item" data-open-card="${esc(row.id)}" tabindex="0" role="link" aria-label="Open ${esc(row.title)}">
+    return rows.map((row) => `<div class="rlist-item" data-paper-card="${esc(row.id)}" tabindex="0" role="link" aria-label="Open details for ${esc(row.title)}">
       <div class="rlist-icon">${resourceIcon(row)}</div>
       <div class="rlist-main">
         <div class="rlist-title">${esc(row.title)}</div>
@@ -637,8 +649,8 @@ import {
             <div class="dl-info">
               <div class="dl-meta-grid">${detailMeta(row)}</div>
               <div class="dl-actions">
-                <button class="dl-btn-primary" data-open="${esc(row.id)}">Open PDF</button>
-                <button class="dl-btn-secondary" data-preview="${esc(row.id)}">👁️ Preview PDF</button>
+                <button class="dl-btn-primary" data-open="${esc(row.id)}">Download PDF</button>
+                <button class="dl-btn-secondary" data-preview="${esc(row.id)}">Preview PDF</button>
                 <button class="dl-btn-secondary" data-bookmark="${esc(row.id)}">${isSaved(row.id) ? "⭐ Saved" : "☆ Save"}</button>
                 <button class="dl-btn-secondary" data-done="${esc(row.id)}">${isDone(row.id) ? "✅ Done" : "✅ Mark Done"}</button>
                 <button class="dl-btn-secondary" data-copy-link="${esc(row.id)}">🔗 Copy Link</button>
@@ -655,7 +667,7 @@ import {
           </div>
           <div class="dl-sidebar-card">
             <div class="dl-sidebar-title">Related papers</div>
-            ${related.length ? related.map((item) => `<div class="related-item" data-open-card="${esc(item.id)}" tabindex="0" role="link"><div class="related-icon">${resourceIcon(item)}</div><div><div class="related-item-title">${esc(item.title)}</div><div class="related-item-meta">${esc(item.type)} - ${esc(item.medium)} - ${esc(item.year || "")}</div></div></div>`).join("") : `<div class="related-item-meta">No related resources yet.</div>`}
+            ${related.length ? related.map((item) => `<div class="related-item" data-paper-card="${esc(item.id)}" tabindex="0" role="link"><div class="related-icon">${resourceIcon(item)}</div><div><div class="related-item-title">${esc(item.title)}</div><div class="related-item-meta">${esc(item.type)} - ${esc(item.medium)} - ${esc(item.year || "")}</div></div></div>`).join("") : `<div class="related-item-meta">No related resources yet.</div>`}
           </div>
         </div>
       </div>
@@ -670,6 +682,8 @@ import {
   function googleViewerUrl(row) {
     const url = urlFor(row);
     if (!url) return "";
+    const driveId = driveFileIdFromUrl(url);
+    if (driveId) return `https://drive.google.com/file/d/${encodeURIComponent(driveId)}/preview`;
     return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
   }
 
@@ -687,7 +701,7 @@ import {
         ${viewer ? `<iframe class="pdf-modal-frame" src="${esc(viewer)}" title="${esc(row.title)}"></iframe>` : `<div class="resources-empty">No preview link is saved for this resource.</div>`}
         <div class="pdf-modal-actions">
           <button class="dl-btn-secondary" data-copy-link="${esc(row.id)}">🔗 Copy Link</button>
-          <button class="dl-btn-primary" data-open="${esc(row.id)}">Open PDF</button>
+          <button class="dl-btn-primary" data-open="${esc(row.id)}">Download PDF</button>
         </div>
       </div>
     </div>`;
@@ -781,12 +795,15 @@ import {
       render();
     });
     document.querySelectorAll("[data-paper]").forEach((item) => {
-      item.addEventListener("click", () => {
+      item.addEventListener("click", (event) => {
+        event.stopPropagation();
         location.hash = `paper=${item.dataset.paper}`;
       });
     });
-    document.querySelectorAll("[data-open-card]").forEach((item) => {
-      const open = () => openResource(item.dataset.openCard);
+    document.querySelectorAll("[data-paper-card]").forEach((item) => {
+      const open = () => {
+        location.hash = `paper=${item.dataset.paperCard}`;
+      };
       item.addEventListener("click", open);
       item.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
