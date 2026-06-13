@@ -238,7 +238,7 @@
                 <label>Year</label>
                 <select id="f-year">
                   <option value="">- Select Year -</option>
-                  <option>2024</option><option>2023</option><option>2022</option><option>2021</option>
+                  <option>2026</option><option>2025</option><option>2024</option><option>2023</option><option>2022</option><option>2021</option>
                   <option>2020</option><option>2019</option><option>2018</option><option>2017</option>
                   <option>2016</option><option>2015</option><option>2014</option><option>2013</option>
                   <option>2012</option><option>2011</option><option>2010</option><option>Other</option>
@@ -283,8 +283,28 @@
             </div>
 
             <div class="form-group" style="margin-top:8px">
-              <label>Google Drive PDF Link <span class="hint">(paste the normal shared Drive link; it will be corrected)</span></label>
-              <input type="url" id="f-externalurl" placeholder="https://drive.google.com/file/d/FILE_ID/view" />
+              <label>Google Drive PDF Link or Filename <span class="hint">(metadata is detected without replacing your manual edits)</span></label>
+              <div class="drive-input-row">
+                <input type="text" id="f-externalurl" placeholder="https://drive.google.com/file/d/FILE_ID/view or 2024 || Pure Scheme.pdf" />
+                <button type="button" class="btn-ghost" onclick="prefillFromDriveInput()">Prefill</button>
+              </div>
+              <div id="drive-prefill-note" class="drive-helper-note hidden"></div>
+            </div>
+
+            <div class="drive-import-panel">
+              <div class="drive-import-head">
+                <div>
+                  <strong>Bulk Drive Folder Helper</strong>
+                  <span>Paste a public folder link or one PDF filename per line. Items are saved as drafts.</span>
+                </div>
+                <button type="button" class="btn-ghost btn-sm" onclick="analyzeDriveFolderInput()">Analyze</button>
+              </div>
+              <textarea id="drive-folder-input" rows="3" placeholder="https://drive.google.com/drive/folders/FOLDER_ID&#10;2024 || Pure Scheme.pdf&#10;Unit - 04.pdf"></textarea>
+              <div id="drive-folder-results" class="drive-folder-results hidden"></div>
+              <div class="drive-import-actions hidden" id="drive-import-actions">
+                <button type="button" class="btn-primary btn-sm" onclick="saveAnalyzedDriveDrafts()">Save Drafts</button>
+                <button type="button" class="btn-ghost btn-sm" onclick="clearDriveFolderAnalysis()">Clear</button>
+              </div>
             </div>
 
             <!-- OPTIONAL FILE UPLOAD -->
@@ -560,6 +580,51 @@
               <option value="true">On - show maintenance page</option>
             </select>
           </div>
+
+          <div class="drive-import-panel">
+            <div class="drive-import-head">
+              <div>
+                <strong>Drive Auto Sync</strong>
+                <span>Watch one public Google Drive folder while admin is open and save public Drive links to Firebase automatically. PDF files stay in Drive.</span>
+              </div>
+              <button class="btn-ghost btn-sm" type="button" onclick="syncDriveFolderNow()">Sync Now</button>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-group form-col-2">
+                <label>Google Drive Folder Link</label>
+                <input type="text" id="set-drive-folder" placeholder="https://drive.google.com/drive/folders/FOLDER_ID" />
+              </div>
+              <div class="form-group">
+                <label>Google API Key <span class="hint">(recommended for recursive folder sync)</span></label>
+                <input type="text" id="set-drive-api-key" placeholder="AIza..." />
+              </div>
+              <div class="form-group">
+                <label>Auto Sync Interval</label>
+                <select id="set-drive-interval">
+                  <option value="0">Off - manual only</option>
+                  <option value="5">Every 5 minutes</option>
+                  <option value="15">Every 15 minutes</option>
+                  <option value="30">Every 30 minutes</option>
+                  <option value="60">Every 1 hour</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>New File Visibility</label>
+                <select id="set-drive-status">
+                  <option value="published">Published - visible on website</option>
+                  <option value="draft">Draft - review first</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Fallback Medium</label>
+                <select id="set-drive-medium">
+                  <option>English</option><option>Tamil</option><option>Sinhala</option><option>Bilingual</option>
+                </select>
+              </div>
+            </div>
+            <div id="drive-sync-status" class="drive-helper-note">Save settings, then sync now or leave admin open for auto sync.</div>
+          </div>
+
           <div class="form-actions">
             <button class="btn-primary" onclick="saveSiteSettings()">Save Settings</button>
           </div>
@@ -676,6 +741,23 @@ service firebase.storage {
 <!-- SIDEBAR OVERLAY (mobile) -->
 <div class="sidebar-overlay hidden" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-<script type="module" src="admin.js"></script>
+<script src="admin-drive-helper.js"></script>
+<script>
+  const adminMode = new URLSearchParams(location.search).get("mode") || new URLSearchParams(location.search).get("admin");
+  const useLocalAdmin = adminMode === "local" || location.search.includes("local=1") || location.hash === "#local";
+  const loadScript = (src, type) => new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    if (type) script.type = type;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.body.appendChild(script);
+  });
+  if (useLocalAdmin) {
+    loadScript("tdr-store.js").then(() => loadScript("admin-local.js"));
+  } else {
+    loadScript("admin.js", "module");
+  }
+</script>
 </body>
 </html>

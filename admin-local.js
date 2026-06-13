@@ -3,6 +3,9 @@
   const esc = store.esc;
   let currentSection = "dashboard";
   let modalConfirmFn = null;
+  const autoFilledFields = new Map();
+  let analyzedDriveDrafts = [];
+  let driveSyncTimer = null;
 
   function $(id) {
     return document.getElementById(id);
@@ -41,6 +44,7 @@
     show($("admin-panel"));
     if ($("topbar-email")) $("topbar-email").textContent = "Local admin";
     showSection("dashboard");
+    setupDriveAutoSync();
   }
 
   window.loginAdmin = function () {
@@ -85,10 +89,84 @@
   window.handleFileSelect = function (input) {
     const file = input.files && input.files[0];
     if (!file) return;
-    const nameEl = $("file-name");
-    const sizeEl = $("file-size");
-    if (nameEl) nameEl.textContent = file.name;
-    if (sizeEl) sizeEl.textContent = `${Math.round(file.size / 1024)} KB selected. Add a public file URL before saving.`;
+    const label = $("file-drop-label");
+    const hint = $("file-drop-hint");
+    if (label) label.innerHTML = `<strong>${esc(file.name)}</strong>`;
+    if (hint) hint.textContent = `${Math.round(file.size / 1024)} KB selected. Add a public file URL before saving.`;
+    applyDriveMetadata(window.APHDriveHelper?.inferMetadata(file.name), true);
+  };
+
+  window.prefillFromDriveInput = function () {
+    const input = value("f-externalurl");
+    const meta = window.APHDriveHelper?.inferMetadata(input);
+    if (!input || !meta) return setDriveNote("Paste a Drive PDF link or filename first.");
+    applyDriveMetadata(meta, true);
+  };
+
+  window.analyzeDriveFolderInput = async function () {
+    const input = value("drive-folder-input");
+    const results = $("drive-folder-results");
+    const actions = $("drive-import-actions");
+    if (!input) return showToast("Paste a Drive folder link or filename list first.", "info");
+    show(results);
+    results.innerHTML = `<div class="drive-result-row"><strong>Analyzing...</strong><span></span><span></span><span></span></div>`;
+    hide(actions);
+    const analysis = await window.APHDriveHelper.analyzeFolder(input, { apiKey: getDriveSyncSettings().apiKey });
+    analyzedDriveDrafts = analysis.files || [];
+    if (!analyzedDriveDrafts.length) {
+      results.innerHTML = `<div class="drive-result-row"><strong>No PDF/file names found</strong><span>${esc(analysis.warning || "")}</span><span></span><span></span></div>`;
+      return;
+    }
+    const warning = analysis.warning ? `<div class="drive-helper-note">${esc(analysis.warning)}</div>` : "";
+    results.innerHTML = analyzedDriveDrafts.slice(0, 30).map((row) => `<div class="drive-result-row">
+      <strong>${esc(row.title || row.fileName || "Untitled")}</strong>
+      <span>${esc(row.subject || "Other")} / ${esc(row.type || "Other")}</span>
+      <span>${esc(row.medium || "English")} ${esc(row.year || "")}</span>
+      <span>${row.externalUrl ? "Link ready" : "Draft"}</span>
+    </div>`).join("") + warning;
+    show(actions);
+  };
+
+  window.saveAnalyzedDriveDrafts = function () {
+    if (!analyzedDriveDrafts.length) return showToast("Analyze folder items first.", "info");
+    analyzedDriveDrafts.forEach((row) => {
+      const subject = row.subject || "Other";
+      const type = row.type || "Other";
+      const medium = row.medium || "English";
+      const stream = row.stream || streamForSubject(subject) || "Common Resources";
+      store.saveResource({
+        title: row.title || row.fileName || "Untitled Resource",
+        subject,
+        stream,
+        type,
+        medium,
+        year: row.year || "",
+        examType: row.examType || "",
+        paperPart: row.paperPart || "",
+        description: "",
+        source: "Google Drive",
+        tags: row.tags || [subject, type, medium, row.year].filter(Boolean),
+        externalUrl: row.externalUrl || "",
+        fileUrl: row.externalUrl || "",
+        fileType: "PDF",
+        fileSizeLabel: row.externalUrl ? "Drive Link" : "Needs link",
+        status: "draft",
+        featured: "false",
+        downloadCount: 0
+      });
+    });
+    showToast(`${analyzedDriveDrafts.length} Drive draft(s) saved.`, "success");
+    clearDriveFolderAnalysis();
+    renderDashboard();
+  };
+
+  window.clearDriveFolderAnalysis = function () {
+    analyzedDriveDrafts = [];
+    setValue("drive-folder-input", "");
+    const results = $("drive-folder-results");
+    if (results) results.innerHTML = "";
+    hide(results);
+    hide($("drive-import-actions"));
   };
 
   function collectResource() {
@@ -118,6 +196,77 @@
       featured: value("f-featured") || "no",
       downloadCount: Number(existing.downloadCount || 0)
     };
+  }
+
+  function setAutoField(id, val) {
+    if (!val) return false;
+    const el = $(id);
+    if (!el) return false;
+    const previous = autoFilledFields.get(id);
+    if (el.value && el.value !== previous) return false;
+    el.value = val;
+    autoFilledFields.set(id, val);
+    return true;
+  }
+
+  function applyDriveMetadata(meta, announce) {
+    if (!meta) return;
+    const changed = [];
+    [
+      ["f-title", meta.title],
+      ["f-subject", meta.subject],
+      ["f-stream", meta.stream || streamForSubject(meta.subject)],
+      ["f-type", meta.type],
+      ["f-medium", meta.medium],
+      ["f-year", meta.year],
+      ["f-examtype", meta.examType],
+      ["f-paperpart", meta.paperPart]
+    ].forEach(([id, val]) => {
+      if (setAutoField(id, val)) changed.push(labelForField(id));
+    });
+    if (!value("f-tags") && meta.tags?.length && setAutoField("f-tags", meta.tags.join(", "))) changed.push("tags");
+    if (meta.externalUrl && !$("f-externalurl").value) setValue("f-externalurl", meta.externalUrl);
+    if (announce) setDriveNote(changed.length ? `Prefilled ${changed.join(", ")}. Manual edits are kept.` : "No empty fields needed changing. Your manual values were kept.");
+  }
+
+  function labelForField(id) {
+    return ({
+      "f-title": "title",
+      "f-subject": "subject",
+      "f-stream": "stream",
+      "f-type": "type",
+      "f-medium": "medium",
+      "f-year": "year",
+      "f-examtype": "exam type",
+      "f-paperpart": "paper part",
+      "f-tags": "tags"
+    })[id] || id;
+  }
+
+  function setDriveNote(message) {
+    const note = $("drive-prefill-note");
+    if (!note) return;
+    note.textContent = message;
+    show(note);
+  }
+
+  function streamForSubject(subject) {
+    const map = {
+      "Combined Maths": "Physical Science",
+      "Physics": "Physical Science",
+      "Chemistry": "Physical Science",
+      "Biology": "Bio Science",
+      "Accounting": "Commerce",
+      "Business Studies": "Commerce",
+      "Economics": "Commerce",
+      "ICT": "Technology",
+      "Engineering Technology": "Technology",
+      "Science for Technology": "Technology",
+      "Bio Systems Technology": "Technology",
+      "General English": "Common Resources",
+      "General Knowledge": "Common Resources"
+    };
+    return map[subject] || "";
   }
 
   window.handleSubmitResource = function () {
@@ -167,6 +316,8 @@
     if (form) form.reset();
     ["f-edit-id", "f-edit-storagepath", "f-edit-fileurl"].forEach((id) => setValue(id, ""));
     if ($("upload-section-title")) $("upload-section-title").textContent = "Upload Resource";
+    autoFilledFields.clear();
+    hide($("drive-prefill-note"));
     clearUploadMessages();
   }
 
@@ -389,6 +540,112 @@
     </div>`).join("") : `<div class="empty-state">No subjects.</div>`;
   }
 
+  function getDriveSyncSettings() {
+    return {
+      folder: value("set-drive-folder") || localStorage.getItem("aph.drive.folder") || "",
+      apiKey: value("set-drive-api-key") || localStorage.getItem("aph.drive.apiKey") || "",
+      interval: Number(value("set-drive-interval") || localStorage.getItem("aph.drive.interval") || 0),
+      status: value("set-drive-status") || localStorage.getItem("aph.drive.status") || "published",
+      medium: value("set-drive-medium") || localStorage.getItem("aph.drive.medium") || "English"
+    };
+  }
+
+  function setDriveSyncStatus(message) {
+    const el = $("drive-sync-status");
+    if (el) el.textContent = message;
+  }
+
+  function cacheDriveSyncSettings(settings) {
+    localStorage.setItem("aph.drive.folder", settings.folder || "");
+    localStorage.setItem("aph.drive.apiKey", settings.apiKey || "");
+    localStorage.setItem("aph.drive.interval", String(settings.interval || 0));
+    localStorage.setItem("aph.drive.status", settings.status || "published");
+    localStorage.setItem("aph.drive.medium", settings.medium || "English");
+  }
+
+  function setupDriveAutoSync() {
+    if (driveSyncTimer) clearInterval(driveSyncTimer);
+    driveSyncTimer = null;
+    const settings = getDriveSyncSettings();
+    if (!settings.folder || !settings.interval) return;
+    driveSyncTimer = setInterval(() => {
+      syncDriveFolder({ quiet: true });
+    }, settings.interval * 60 * 1000);
+    setDriveSyncStatus(`Auto sync is on. Checks run every ${settings.interval} minutes while admin is open.`);
+  }
+
+  function existingDriveKeys() {
+    const keys = new Set();
+    store.getResources().forEach((row) => {
+      [row.driveId, row.externalUrl, row.fileUrl, row.fileName, row.title].filter(Boolean).forEach((value) => keys.add(String(value).toLowerCase()));
+    });
+    return keys;
+  }
+
+  function driveResourcePayload(row, settings) {
+    const subject = row.subject || "Other";
+    const type = row.type || "Other";
+    const medium = row.medium || settings.medium || "English";
+    const stream = row.stream || streamForSubject(subject) || "Common Resources";
+    const externalUrl = row.externalUrl || "";
+    return {
+      title: row.title || row.fileName || "Untitled Resource",
+      subject,
+      stream,
+      type,
+      medium,
+      year: row.year || "",
+      examType: row.examType || "",
+      paperPart: row.paperPart || "",
+      description: "",
+      source: "Google Drive Auto Sync",
+      tags: row.tags || [subject, type, medium, row.year].filter(Boolean),
+      externalUrl,
+      fileUrl: externalUrl,
+      driveId: row.driveId || "",
+      driveModifiedTime: row.modifiedTime || "",
+      fileName: row.fileName || "",
+      fileType: "PDF",
+      fileSizeLabel: externalUrl ? "Drive Link" : "Needs link",
+      status: settings.status || "published",
+      featured: "false",
+      downloadCount: 0
+    };
+  }
+
+  async function syncDriveFolder(options = {}) {
+    const settings = getDriveSyncSettings();
+    if (!settings.folder) {
+      if (!options.quiet) showToast("Add a Google Drive folder link in settings first.", "info");
+      return;
+    }
+    setDriveSyncStatus("Checking Google Drive folder...");
+    try {
+      const analysis = await window.APHDriveHelper.analyzeFolder(settings.folder, { apiKey: settings.apiKey });
+      const files = analysis.files || [];
+      const keys = existingDriveKeys();
+      const fresh = files.filter((row) => {
+        const values = [row.driveId, row.externalUrl, row.fileName, row.title].filter(Boolean).map((value) => String(value).toLowerCase());
+        return values.length && !values.some((value) => keys.has(value));
+      });
+      fresh.forEach((row) => store.saveResource(driveResourcePayload(row, settings)));
+      const warning = analysis.warning ? ` ${analysis.warning}` : "";
+      setDriveSyncStatus(`Drive sync complete. ${fresh.length} new file(s), ${files.length - fresh.length} already existed.${warning}`);
+      if (!options.quiet) showToast(`Drive sync added ${fresh.length} new file(s).`, "success");
+      if (fresh.length) {
+        renderDashboard();
+        if (currentSection === "resources") renderResources();
+      }
+    } catch (err) {
+      setDriveSyncStatus("Drive sync failed: " + err.message);
+      if (!options.quiet) showToast("Drive sync failed: " + err.message, "error");
+    }
+  }
+
+  window.syncDriveFolderNow = function () {
+    syncDriveFolder();
+  };
+
   window.loadSiteSettings = function () {
     const s = store.getSettings();
     setValue("set-name", s.name);
@@ -404,9 +661,19 @@
     setValue("set-exam-date", toDateTimeLocalValue(s.examDate));
     setValue("set-notice", s.notice);
     setValue("set-maintenance", s.maintenance || "false");
+    const driveSync = s.driveSync || {};
+    setValue("set-drive-folder", driveSync.folder || localStorage.getItem("aph.drive.folder") || "");
+    setValue("set-drive-api-key", driveSync.apiKey || localStorage.getItem("aph.drive.apiKey") || "");
+    setValue("set-drive-interval", String(driveSync.interval || localStorage.getItem("aph.drive.interval") || "0"));
+    setValue("set-drive-status", driveSync.status || localStorage.getItem("aph.drive.status") || "published");
+    setValue("set-drive-medium", driveSync.medium || localStorage.getItem("aph.drive.medium") || "English");
+    cacheDriveSyncSettings(getDriveSyncSettings());
+    setupDriveAutoSync();
   };
 
   window.saveSiteSettings = function () {
+    const driveSync = getDriveSyncSettings();
+    cacheDriveSyncSettings(driveSync);
     store.saveSettings({
       name: value("set-name") || "A/L Paper Hub",
       tagline: value("set-tagline"),
@@ -420,8 +687,10 @@
       examSubtitle: value("set-exam-subtitle"),
       examDate: value("set-exam-date"),
       notice: value("set-notice"),
-      maintenance: value("set-maintenance")
+      maintenance: value("set-maintenance"),
+      driveSync
     });
+    setupDriveAutoSync();
     const msg = $("settings-msg");
     if (msg) {
       msg.textContent = "Settings saved. Open the public site to see changes.";
@@ -469,6 +738,8 @@
   function normalizeDriveDownloadUrl(rawUrl) {
     const url = (rawUrl || "").trim();
     if (!url) return "";
+    if (!/^https?:\/\//i.test(url)) return "";
+    if (window.APHDriveHelper) return window.APHDriveHelper.normalizeDriveDownloadUrl(url);
     const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
     if (fileMatch) return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileMatch[1])}`;
     try {
@@ -498,6 +769,19 @@
     if (currentSection === "announcements") renderAnnouncements();
     if (currentSection === "subjects") renderSubjects();
   });
+
+  ["f-title", "f-subject", "f-stream", "f-type", "f-medium", "f-year", "f-examtype", "f-paperpart", "f-tags"].forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    const markManual = () => {
+      if (autoFilledFields.get(id) !== el.value) autoFilledFields.delete(id);
+    };
+    el.addEventListener("input", markManual);
+    el.addEventListener("change", markManual);
+  });
+
+  const driveInput = $("f-externalurl");
+  if (driveInput) driveInput.addEventListener("blur", () => window.prefillFromDriveInput());
 
   document.addEventListener("DOMContentLoaded", init);
 })();

@@ -21,7 +21,7 @@ import {
   const db = getFirestore(app);
 
   const streams = ["All Streams", "Physical Science", "Bio Science", "Commerce", "Arts", "Technology", "Common Resources"];
-  const types = ["All Types", "Past Paper", "Marking Scheme", "Model Paper", "Term Test Paper", "School Paper", "Book", "Syllabus", "Short Note"];
+  const types = ["All Types", "Past Paper", "Marking Scheme", "FWC Paper", "Mora Paper", "Elaboration", "Model Paper", "Term Test Paper", "School Paper", "Book", "Syllabus", "Short Note"];
   const mediums = ["All Mediums", "Tamil", "Sinhala", "English", "Bilingual"];
   const fallbackExamDate = "2026-11-10T00:00:00+05:30";
   const fallbackExamTitle = "G.C.E. Advanced Level Examination";
@@ -111,6 +111,19 @@ import {
     } catch (_) {
       return url;
     }
+    return url;
+  }
+
+  function openableUrl(rawUrl) {
+    const url = String(rawUrl || "").trim();
+    if (!url) return "";
+    try {
+      const parsed = new URL(url);
+      if (/drive\.google\.com$/i.test(parsed.hostname)) {
+        const id = parsed.searchParams.get("id");
+        if (id) return `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`;
+      }
+    } catch (_) {}
     return url;
   }
 
@@ -405,14 +418,13 @@ import {
     const done = isDone(row.id);
     const viewClass = variant === "list" ? "rlist-view-btn" : "resource-view-btn";
     const dlClass = variant === "list" ? "rlist-dl-btn" : "resource-dl-btn";
-    return `<button class="${viewClass}" data-paper="${id}">👁️ View Details</button>
-      <button class="${viewClass}${saved ? " saved" : ""}" data-bookmark="${id}">${saved ? "⭐ Saved" : "☆ Save"}</button>
-      <button class="${viewClass}${done ? " done" : ""}" data-done="${id}">${done ? "✅ Done" : "☐ Done"}</button>
-      <button class="${dlClass}" data-open="${id}">⬇️ Download PDF</button>`;
+    return `<button class="${viewClass}${saved ? " saved" : ""}" data-bookmark="${id}">${saved ? "⭐ Saved" : "☆ Save"}</button>
+      <button class="${viewClass}${done ? " done" : ""}" data-done="${id}">✅ Done</button>
+      <button class="${dlClass}" data-open="${id}">Open PDF</button>`;
   }
 
   function renderHomeResourceCard(row) {
-    return `<div class="resource-card">
+    return `<div class="resource-card" data-open-card="${esc(row.id)}" tabindex="0" role="link" aria-label="Open ${esc(row.title)}">
       <div class="resource-card-top">
         <div class="resource-card-subject"><div class="resource-subject-dot" style="background:var(--blue)"></div><div class="resource-subject-name">${subjectEmoji(row.subject)} ${esc(row.subject)} - ${esc(row.stream || "A/L")}</div></div>
         <div class="resource-card-title">${esc(row.title)}</div>
@@ -497,7 +509,7 @@ import {
   }
 
   function renderPaperList(rows) {
-    return rows.map((row) => `<div class="rlist-item">
+    return rows.map((row) => `<div class="rlist-item" data-open-card="${esc(row.id)}" tabindex="0" role="link" aria-label="Open ${esc(row.title)}">
       <div class="rlist-icon">${resourceIcon(row)}</div>
       <div class="rlist-main">
         <div class="rlist-title">${esc(row.title)}</div>
@@ -625,10 +637,10 @@ import {
             <div class="dl-info">
               <div class="dl-meta-grid">${detailMeta(row)}</div>
               <div class="dl-actions">
-                <button class="dl-btn-primary" data-open="${esc(row.id)}">⬇️ Download Paper PDF</button>
+                <button class="dl-btn-primary" data-open="${esc(row.id)}">Open PDF</button>
                 <button class="dl-btn-secondary" data-preview="${esc(row.id)}">👁️ Preview PDF</button>
                 <button class="dl-btn-secondary" data-bookmark="${esc(row.id)}">${isSaved(row.id) ? "⭐ Saved" : "☆ Save"}</button>
-                <button class="dl-btn-secondary" data-done="${esc(row.id)}">${isDone(row.id) ? "✅ Done" : "☐ Mark Done"}</button>
+                <button class="dl-btn-secondary" data-done="${esc(row.id)}">${isDone(row.id) ? "✅ Done" : "✅ Mark Done"}</button>
                 <button class="dl-btn-secondary" data-copy-link="${esc(row.id)}">🔗 Copy Link</button>
                 <button class="dl-btn-secondary" data-report="${esc(row.id)}" style="font-size:13px;padding:10px 20px">Report Broken Link</button>
               </div>
@@ -643,7 +655,7 @@ import {
           </div>
           <div class="dl-sidebar-card">
             <div class="dl-sidebar-title">Related papers</div>
-            ${related.length ? related.map((item) => `<div class="related-item" data-paper="${esc(item.id)}"><div class="related-icon">${resourceIcon(item)}</div><div><div class="related-item-title">${esc(item.title)}</div><div class="related-item-meta">${esc(item.type)} - ${esc(item.medium)} - ${esc(item.year || "")}</div></div></div>`).join("") : `<div class="related-item-meta">No related resources yet.</div>`}
+            ${related.length ? related.map((item) => `<div class="related-item" data-open-card="${esc(item.id)}" tabindex="0" role="link"><div class="related-icon">${resourceIcon(item)}</div><div><div class="related-item-title">${esc(item.title)}</div><div class="related-item-meta">${esc(item.type)} - ${esc(item.medium)} - ${esc(item.year || "")}</div></div></div>`).join("") : `<div class="related-item-meta">No related resources yet.</div>`}
           </div>
         </div>
       </div>
@@ -675,7 +687,7 @@ import {
         ${viewer ? `<iframe class="pdf-modal-frame" src="${esc(viewer)}" title="${esc(row.title)}"></iframe>` : `<div class="resources-empty">No preview link is saved for this resource.</div>`}
         <div class="pdf-modal-actions">
           <button class="dl-btn-secondary" data-copy-link="${esc(row.id)}">🔗 Copy Link</button>
-          <button class="dl-btn-primary" data-open="${esc(row.id)}">⬇️ Download PDF</button>
+          <button class="dl-btn-primary" data-open="${esc(row.id)}">Open PDF</button>
         </div>
       </div>
     </div>`;
@@ -773,20 +785,45 @@ import {
         location.hash = `paper=${item.dataset.paper}`;
       });
     });
+    document.querySelectorAll("[data-open-card]").forEach((item) => {
+      const open = () => openResource(item.dataset.openCard);
+      item.addEventListener("click", open);
+      item.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          open();
+        }
+      });
+    });
     document.querySelectorAll("[data-open]").forEach((button) => {
-      button.addEventListener("click", () => openResource(button.dataset.open));
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openResource(button.dataset.open);
+      });
     });
     document.querySelectorAll("[data-preview]").forEach((button) => {
-      button.addEventListener("click", () => openPreview(button.dataset.preview));
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openPreview(button.dataset.preview);
+      });
     });
     document.querySelectorAll("[data-bookmark]").forEach((button) => {
-      button.addEventListener("click", () => toggleBookmark(button.dataset.bookmark));
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        toggleBookmark(button.dataset.bookmark);
+      });
     });
     document.querySelectorAll("[data-done]").forEach((button) => {
-      button.addEventListener("click", () => toggleDone(button.dataset.done));
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        toggleDone(button.dataset.done);
+      });
     });
     document.querySelectorAll("[data-copy-link]").forEach((button) => {
-      button.addEventListener("click", () => copyShareLink(button.dataset.copyLink));
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        copyShareLink(button.dataset.copyLink);
+      });
     });
     document.querySelectorAll("[data-modal-close]").forEach((item) => {
       item.addEventListener("click", (event) => {
@@ -794,7 +831,10 @@ import {
       });
     });
     document.querySelectorAll("[data-report]").forEach((button) => {
-      button.addEventListener("click", () => reportResource(button.dataset.report));
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        reportResource(button.dataset.report);
+      });
     });
     document.querySelectorAll("[data-pomodoro-action]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -939,8 +979,8 @@ import {
       row.downloadCount = Number(row.downloadCount || 0) + 1;
       store.saveResource(row);
     }
-    window.open(url, "_blank", "noopener");
-    showToast("Opening the PDF download.", "success");
+    window.open(openableUrl(url), "_blank", "noopener");
+    showToast("Opening the PDF.", "success");
   }
 
   async function reportResource(id) {

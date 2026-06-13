@@ -56,6 +56,9 @@ let currentPage    = 1;
 const PAGE_SIZE    = 20;
 let modalConfirmFn = null;
 let isEditing      = false;
+const autoFilledFields = new Map();
+let analyzedDriveDrafts = [];
+let driveSyncTimer = null;
 
 /* =======================================================
    AUTH
@@ -158,6 +161,7 @@ function initAdminPanel() {
   showSection("dashboard");
   loadDashboardStats();
   loadRecentResources();
+  setupDriveAutoSync();
 }
 
 /* =======================================================
@@ -281,6 +285,108 @@ window.handleFileSelect = function (input) {
   if (!file) return;
   document.getElementById("file-drop-label").innerHTML = `<strong>${esc(file.name)}</strong>`;
   document.getElementById("file-drop-hint").textContent = formatFileSize(file.size);
+  applyDriveMetadata(window.APHDriveHelper?.inferMetadata(file.name), true);
+};
+
+window.prefillFromDriveInput = function () {
+  const input = document.getElementById("f-externalurl").value.trim();
+  const meta = window.APHDriveHelper?.inferMetadata(input);
+  if (!meta || !input) {
+    setDriveNote("Paste a Drive PDF link or filename first.");
+    return;
+  }
+  applyDriveMetadata(meta, true);
+};
+
+window.analyzeDriveFolderInput = async function () {
+  const input = document.getElementById("drive-folder-input").value.trim();
+  const results = document.getElementById("drive-folder-results");
+  const actions = document.getElementById("drive-import-actions");
+  if (!input) {
+    showToast("Paste a Drive folder link or filename list first.", "info");
+    return;
+  }
+  results.classList.remove("hidden");
+  results.innerHTML = `<div class="drive-result-row"><strong>Analyzing...</strong><span></span><span></span><span></span></div>`;
+  actions.classList.add("hidden");
+  const analysis = await window.APHDriveHelper.analyzeFolder(input, { apiKey: getDriveSyncSettings().apiKey });
+  analyzedDriveDrafts = analysis.files || [];
+  if (!analyzedDriveDrafts.length) {
+    results.innerHTML = `<div class="drive-result-row"><strong>No PDF/file names found</strong><span>${esc(analysis.warning || "")}</span><span></span><span></span></div>`;
+    return;
+  }
+  const warning = analysis.warning ? `<div class="drive-helper-note">${esc(analysis.warning)}</div>` : "";
+  results.innerHTML = analyzedDriveDrafts.slice(0, 30).map((row) => `<div class="drive-result-row">
+    <strong>${esc(row.title || row.fileName || "Untitled")}</strong>
+    <span>${esc(row.subject || "Other")} / ${esc(row.type || "Other")}</span>
+    <span>${esc(row.medium || "English")} ${esc(row.year || "")}</span>
+    <span>${row.externalUrl ? "Link ready" : "Draft"}</span>
+  </div>`).join("") + warning;
+  actions.classList.remove("hidden");
+};
+
+window.saveAnalyzedDriveDrafts = async function () {
+  if (!analyzedDriveDrafts.length) {
+    showToast("Analyze folder items first.", "info");
+    return;
+  }
+  setUploadLoading(true);
+  try {
+    const email = auth.currentUser?.email || "admin";
+    const batch = analyzedDriveDrafts.map((row) => {
+      const subject = row.subject || "Other";
+      const type = row.type || "Other";
+      const medium = row.medium || "English";
+      const stream = row.stream || streamForSubject(subject) || "Common Resources";
+      const externalUrl = row.externalUrl || "";
+      return addDoc(collection(db, "resources"), {
+        title: row.title || row.fileName || "Untitled Resource",
+        subject,
+        stream,
+        type,
+        medium,
+        year: row.year || "",
+        examType: row.examType || "",
+        paperPart: row.paperPart || "",
+        description: "",
+        source: "Google Drive",
+        tags: row.tags || [subject, type, medium, row.year].filter(Boolean),
+        status: "draft",
+        featured: false,
+        externalUrl,
+        fileUrl: "",
+        storagePath: "",
+        fileName: row.fileName || "",
+        fileSize: 0,
+        fileSizeLabel: externalUrl ? "Drive Link" : "Needs link",
+        fileType: "PDF",
+        slug: createSlug(row.title || row.fileName || "resource"),
+        downloadCount: 0,
+        viewCount: 0,
+        reportCount: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        createdBy: email,
+        updatedBy: email,
+      });
+    });
+    await Promise.all(batch);
+    showToast(`${analyzedDriveDrafts.length} Drive draft(s) saved.`, "success");
+    clearDriveFolderAnalysis();
+    loadDashboardStats();
+  } catch (err) {
+    showUploadError("Drive draft save failed: " + err.message);
+  } finally {
+    setUploadLoading(false);
+  }
+};
+
+window.clearDriveFolderAnalysis = function () {
+  analyzedDriveDrafts = [];
+  document.getElementById("drive-folder-input").value = "";
+  document.getElementById("drive-folder-results").innerHTML = "";
+  document.getElementById("drive-folder-results").classList.add("hidden");
+  document.getElementById("drive-import-actions").classList.add("hidden");
 };
 
 /** Main submit handler - handles both create and edit */
@@ -455,6 +561,95 @@ function collectFormData() {
   return { title, subject, stream, type, medium, year, examType, paperPart, description, source, tags, status, featured };
 }
 
+function fieldValue(id) {
+  return document.getElementById(id)?.value || "";
+}
+
+function setAutoField(id, value) {
+  if (!value) return false;
+  const el = document.getElementById(id);
+  if (!el) return false;
+  const previous = autoFilledFields.get(id);
+  if (el.value && el.value !== previous) return false;
+  el.value = value;
+  autoFilledFields.set(id, value);
+  return true;
+}
+
+function applyDriveMetadata(meta, announce) {
+  if (!meta) return;
+  const changed = [];
+  const fields = [
+    ["f-title", meta.title],
+    ["f-subject", meta.subject],
+    ["f-stream", meta.stream || streamForSubject(meta.subject)],
+    ["f-type", meta.type],
+    ["f-medium", meta.medium],
+    ["f-year", meta.year],
+    ["f-examtype", meta.examType],
+    ["f-paperpart", meta.paperPart]
+  ];
+  fields.forEach(([id, value]) => {
+    if (setAutoField(id, value)) changed.push(labelForField(id));
+  });
+
+  if (!fieldValue("f-tags") && meta.tags?.length) {
+    setAutoField("f-tags", meta.tags.join(", "));
+    changed.push("tags");
+  }
+
+  if (meta.externalUrl) {
+    const urlField = document.getElementById("f-externalurl");
+    if (urlField && (!urlField.value || !autoFilledFields.has("f-externalurl"))) {
+      urlField.value = meta.externalUrl;
+    }
+  }
+
+  if (announce) {
+    setDriveNote(changed.length ? `Prefilled ${changed.join(", ")}. Manual edits are kept.` : "No empty fields needed changing. Your manual values were kept.");
+  }
+}
+
+function labelForField(id) {
+  return ({
+    "f-title": "title",
+    "f-subject": "subject",
+    "f-stream": "stream",
+    "f-type": "type",
+    "f-medium": "medium",
+    "f-year": "year",
+    "f-examtype": "exam type",
+    "f-paperpart": "paper part",
+    "f-tags": "tags"
+  })[id] || id;
+}
+
+function setDriveNote(message) {
+  const note = document.getElementById("drive-prefill-note");
+  if (!note) return;
+  note.textContent = message;
+  note.classList.remove("hidden");
+}
+
+function streamForSubject(subject) {
+  const map = {
+    "Combined Maths": "Physical Science",
+    "Physics": "Physical Science",
+    "Chemistry": "Physical Science",
+    "Biology": "Bio Science",
+    "Accounting": "Commerce",
+    "Business Studies": "Commerce",
+    "Economics": "Commerce",
+    "ICT": "Technology",
+    "Engineering Technology": "Technology",
+    "Science for Technology": "Technology",
+    "Bio Systems Technology": "Technology",
+    "General English": "Common Resources",
+    "General Knowledge": "Common Resources"
+  };
+  return map[subject] || "";
+}
+
 /** Edit an existing resource - prefill form */
 window.editResource = async function (docId) {
   isEditing = true;
@@ -513,6 +708,9 @@ function resetUploadForm() {
   document.getElementById("file-drop-hint").textContent = "No file selected";
   document.getElementById("upload-progress-wrap").classList.add("hidden");
   document.getElementById("upload-progress-bar").style.width = "0%";
+  autoFilledFields.clear();
+  const note = document.getElementById("drive-prefill-note");
+  if (note) note.classList.add("hidden");
   clearUploadMessages();
   isEditing = false;
 }
@@ -520,6 +718,8 @@ function resetUploadForm() {
 function normalizeDriveDownloadUrl(rawUrl) {
   const url = (rawUrl || "").trim();
   if (!url) return "";
+  if (!/^https?:\/\//i.test(url)) return "";
+  if (window.APHDriveHelper) return window.APHDriveHelper.normalizeDriveDownloadUrl(url);
   const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
   if (fileMatch) return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileMatch[1])}`;
   try {
@@ -985,11 +1185,131 @@ window.deleteSubject = function (docId) {
    SITE SETTINGS
 ======================================================= */
 
+function getDriveSyncSettings() {
+  const codeSync = window.APH_DRIVE_SYNC || {};
+  return {
+    folder: document.getElementById("set-drive-folder")?.value.trim() || localStorage.getItem("aph.drive.folder") || codeSync.folder || "",
+    apiKey: document.getElementById("set-drive-api-key")?.value.trim() || localStorage.getItem("aph.drive.apiKey") || codeSync.apiKey || "",
+    interval: Number(document.getElementById("set-drive-interval")?.value || localStorage.getItem("aph.drive.interval") || 0),
+    status: document.getElementById("set-drive-status")?.value || localStorage.getItem("aph.drive.status") || "published",
+    medium: document.getElementById("set-drive-medium")?.value || localStorage.getItem("aph.drive.medium") || "English"
+  };
+}
+
+function setDriveSyncStatus(message) {
+  const el = document.getElementById("drive-sync-status");
+  if (el) el.textContent = message;
+}
+
+function cacheDriveSyncSettings(settings) {
+  localStorage.setItem("aph.drive.folder", settings.folder || "");
+  localStorage.setItem("aph.drive.apiKey", settings.apiKey || "");
+  localStorage.setItem("aph.drive.interval", String(settings.interval || 0));
+  localStorage.setItem("aph.drive.status", settings.status || "published");
+  localStorage.setItem("aph.drive.medium", settings.medium || "English");
+}
+
+function setupDriveAutoSync() {
+  if (driveSyncTimer) clearInterval(driveSyncTimer);
+  driveSyncTimer = null;
+  const settings = getDriveSyncSettings();
+  if (!settings.folder || !settings.interval) return;
+  driveSyncTimer = setInterval(() => {
+    syncDriveFolder({ quiet: true });
+  }, settings.interval * 60 * 1000);
+  setDriveSyncStatus(`Auto sync is on. Checks run every ${settings.interval} minutes while admin is open.`);
+}
+
+async function existingDriveKeys() {
+  const keys = new Set();
+  const snap = await getDocs(collection(db, "resources"));
+  snap.forEach((item) => {
+    const row = item.data();
+    [row.driveId, row.externalUrl, row.fileName, row.title].filter(Boolean).forEach((value) => keys.add(String(value).toLowerCase()));
+  });
+  return keys;
+}
+
+function driveResourcePayload(row, settings) {
+  const subject = row.subject || "Other";
+  const type = row.type || "Other";
+  const medium = row.medium || settings.medium || "English";
+  const stream = row.stream || streamForSubject(subject) || "Common Resources";
+  const externalUrl = row.externalUrl || "";
+  return {
+    title: row.title || row.fileName || "Untitled Resource",
+    subject,
+    stream,
+    type,
+    medium,
+    year: row.year || "",
+    examType: row.examType || "",
+    paperPart: row.paperPart || "",
+    description: "",
+    source: row.category ? `Google Drive Auto Sync - ${row.category}` : "Google Drive Auto Sync",
+    category: row.category || "",
+    folderPath: row.folderPath || "",
+    tags: row.tags || [row.category, subject, type, medium, row.year, row.paperPart].filter(Boolean),
+    status: settings.status || "published",
+    featured: false,
+    externalUrl,
+    fileUrl: "",
+    storagePath: "",
+    driveId: row.driveId || "",
+    driveModifiedTime: row.modifiedTime || "",
+    fileName: row.fileName || "",
+    fileSize: 0,
+    fileSizeLabel: externalUrl ? "Drive Link" : "Needs link",
+    fileType: "PDF",
+    slug: createSlug(row.title || row.fileName || "resource"),
+    downloadCount: 0,
+    viewCount: 0,
+    reportCount: 0,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    createdBy: auth.currentUser?.email || "admin",
+    updatedBy: auth.currentUser?.email || "admin",
+  };
+}
+
+async function syncDriveFolder(options = {}) {
+  const settings = getDriveSyncSettings();
+  if (!settings.folder) {
+    if (!options.quiet) showToast("Add a Google Drive folder link in settings first.", "info");
+    return;
+  }
+  setDriveSyncStatus("Checking Google Drive folder...");
+  try {
+    const analysis = await window.APHDriveHelper.analyzeFolder(settings.folder, { apiKey: settings.apiKey });
+    const files = analysis.files || [];
+    const keys = await existingDriveKeys();
+    const fresh = files.filter((row) => {
+      const values = [row.driveId, row.externalUrl, row.fileName, row.title].filter(Boolean).map((value) => String(value).toLowerCase());
+      return values.length && !values.some((value) => keys.has(value));
+    });
+    await Promise.all(fresh.map((row) => addDoc(collection(db, "resources"), driveResourcePayload(row, settings))));
+    const warning = analysis.warning ? ` ${analysis.warning}` : "";
+    setDriveSyncStatus(`Drive sync complete. ${fresh.length} new file(s), ${files.length - fresh.length} already existed.${warning}`);
+    if (!options.quiet) showToast(`Drive sync added ${fresh.length} new file(s).`, "success");
+    if (fresh.length) {
+      loadDashboardStats();
+      loadRecentResources();
+      if (currentSection === "resources") loadResources();
+    }
+  } catch (err) {
+    setDriveSyncStatus("Drive sync failed: " + err.message);
+    if (!options.quiet) showToast("Drive sync failed: " + err.message, "error");
+  }
+}
+
+window.syncDriveFolderNow = function () {
+  syncDriveFolder();
+};
+
 async function loadSiteSettings() {
   try {
     const snap = await getDoc(doc(db, "siteSettings", "main"));
-    if (!snap.exists()) return;
-    const s = snap.data();
+    const s = snap.exists() ? snap.data() : {};
     document.getElementById("set-name").value        = s.siteName || "";
     document.getElementById("set-tagline").value     = s.tagline || "";
     document.getElementById("set-email").value       = s.contactEmail || "";
@@ -1003,6 +1323,14 @@ async function loadSiteSettings() {
     document.getElementById("set-exam-date").value   = toDateTimeLocalValue(s.examDate || "");
     document.getElementById("set-notice").value      = s.homepageNotice || "";
     document.getElementById("set-maintenance").value = s.maintenanceMode ? "true" : "false";
+    const driveSync = s.driveSync || {};
+    document.getElementById("set-drive-folder").value = driveSync.folder || localStorage.getItem("aph.drive.folder") || (window.APH_DRIVE_SYNC?.folder || "");
+    document.getElementById("set-drive-api-key").value = localStorage.getItem("aph.drive.apiKey") || (window.APH_DRIVE_SYNC?.apiKey || "");
+    document.getElementById("set-drive-interval").value = String(driveSync.interval || localStorage.getItem("aph.drive.interval") || "0");
+    document.getElementById("set-drive-status").value = driveSync.status || localStorage.getItem("aph.drive.status") || "published";
+    document.getElementById("set-drive-medium").value = driveSync.medium || localStorage.getItem("aph.drive.medium") || "English";
+    cacheDriveSyncSettings(getDriveSyncSettings());
+    setupDriveAutoSync();
   } catch (err) {
     console.error("Settings load failed:", err);
   }
@@ -1023,13 +1351,16 @@ window.saveSiteSettings = async function () {
     examDate:        document.getElementById("set-exam-date").value,
     homepageNotice:  document.getElementById("set-notice").value.trim(),
     maintenanceMode: document.getElementById("set-maintenance").value === "true",
+    driveSync:       { ...getDriveSyncSettings(), apiKey: "" },
     updatedAt: serverTimestamp(),
   };
+  cacheDriveSyncSettings(getDriveSyncSettings());
 
   try {
     const ref2 = doc(db, "siteSettings", "main");
     await setDoc(ref2, payload, { merge: true });
     showToast("Settings saved.", "success");
+    setupDriveAutoSync();
   } catch (err) {
     showToast("Failed: " + err.message, "error");
   }
@@ -1127,6 +1458,22 @@ function esc(str) {
 function set(id, val) {
   const el = document.getElementById(id);
   if (el) el.textContent = val;
+}
+
+["f-title", "f-subject", "f-stream", "f-type", "f-medium", "f-year", "f-examtype", "f-paperpart", "f-tags"].forEach((id) => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("input", () => {
+    if (autoFilledFields.get(id) !== el.value) autoFilledFields.delete(id);
+  });
+  el.addEventListener("change", () => {
+    if (autoFilledFields.get(id) !== el.value) autoFilledFields.delete(id);
+  });
+});
+
+const driveInput = document.getElementById("f-externalurl");
+if (driveInput) {
+  driveInput.addEventListener("blur", () => window.prefillFromDriveInput());
 }
 
 /* -- Drag-over highlight on file drop zone ----------- */
