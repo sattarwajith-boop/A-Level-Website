@@ -60,6 +60,7 @@ import {
   };
 
   let searchTimer = 0;
+  let lastRenderedHash = "";
 
   const pomodoro = {
     mode: "focus",
@@ -633,6 +634,7 @@ import {
     const row = state.resources.find((item) => item.id === id) || state.resources[0];
     if (!row) return renderPapers();
     const related = state.resources.filter((item) => item.id !== row.id && item.subject === row.subject).slice(0, 4);
+    const viewer = googleViewerUrl(row);
     return `${renderNav("Past Papers")}
       <div class="page-header">
         <div class="breadcrumb"><a href="#home">Home</a><span class="breadcrumb-sep">></span><a href="#subject=${encodeURIComponent(row.subject)}">${esc(row.subject)}</a><span class="breadcrumb-sep">></span><span style="color:var(--text1)">${esc(row.title)}</span></div>
@@ -644,7 +646,7 @@ import {
           <div class="dl-main-card">
             <div class="dl-preview">
               <div class="dl-badge-official">${esc(row.source || "Educational Resource")}</div>
-              <div style="display:flex;gap:16px"><div class="dl-preview-pdf"><div class="dl-preview-pdf-icon">PDF</div><div class="dl-preview-pdf-name">${esc(row.type || "Resource")}</div></div></div>
+              ${viewer ? `<iframe class="dl-preview-frame" src="${esc(viewer)}" title="${esc(row.title)} preview"></iframe>` : `<div class="resources-empty">No preview link is saved for this resource.</div>`}
             </div>
             <div class="dl-info">
               <div class="dl-meta-grid">${detailMeta(row)}</div>
@@ -737,6 +739,11 @@ import {
     document.body.insertAdjacentHTML("beforeend", renderModal());
     bind();
     if (window.APHTheme) window.APHTheme.init();
+    const currentHash = location.hash || "#home";
+    if (currentHash !== lastRenderedHash) {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      lastRenderedHash = currentHash;
+    }
   }
 
   function bind() {

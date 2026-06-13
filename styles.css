@@ -524,9 +524,15 @@ nav {
 }
 .dl-main-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
 .dl-preview {
-  background: var(--bg3); min-height: 120px;
+  background: var(--bg3); min-height: 420px;
   display: flex; align-items: center; justify-content: center;
   border-bottom: 1px solid var(--border); position: relative;
+}
+.dl-preview-frame {
+  width: 100%;
+  height: 420px;
+  border: 0;
+  background: var(--bg2);
 }
 .dl-preview-pdf {
   background: var(--bg4); border: 1px solid var(--border2);
@@ -1241,6 +1247,8 @@ body {
   }
   .home-filter-grid { grid-template-columns: 1fr; }
   .resource-detail-grid { grid-template-columns: 1fr; }
+  .dl-preview { min-height: 320px; }
+  .dl-preview-frame { height: 320px; }
   .resource-card-actions { grid-template-columns: 1fr; align-items: stretch; }
   .dl-actions { grid-template-columns: 1fr; }
   .resource-grid,
